@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ruta 71</title>
+<meta name="description" content="Prepara la oposición tema a tema: qué sabes, qué te falla y qué toca repasar.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ruta 71">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EEF2F5">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/favicon-32.png">
+<link rel="stylesheet" href="app.css">
+<script>
+  (function () { try { var t = (JSON.parse(localStorage.getItem('ruta71') || '{}').aj || {}).tema || 'auto';
+    var d = t === 'oscuro' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = d ? 'dark' : 'light'; document.documentElement.style.backgroundColor = d ? '#0C1A2C' : '#EEF2F5'; } catch (e) {} })();
+</script>
+</head>
+<body>
+<div id="nav"></div>
+<main id="view"></main>
+<div class="scrim" id="scrim" data-a="cerrar-hoja"></div>
+<div class="sheet" id="sheet"><div class="grab"></div><div class="sheet-body" id="sheet-body"></div></div>
+<div class="toast" id="toast"><span id="toast-t"></span><button id="toast-b" data-a="deshacer" hidden>Deshacer</button></div>
+<script src="app.js"></script>
+</body>
+</html>
