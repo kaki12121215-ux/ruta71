@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.1.2';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);
@@ -148,7 +148,7 @@ const DEF = () => ({
   temario: temarioTec(), temas: {}, tarjetas: [], sesiones: [], sims: [], supuestos: [], hist: [], agenda: [], copias: {}, grupos: [], examenes: [],
   p2: { checks: P2_DEF(), sits: [], ensayos: [], guion: GUION_DEF() },
   rubrica: RUBRICA_DEF(),
-  copia: { url: '', clave: '', ult: null, error: false },
+  copia: { url: '', clave: '', ult: null, error: false, subidos: {} },
   aj: { tema: 'auto', sonido: true, dias: [1, 2, 3, 4, 5] },
   ui: { tmodo: 'mapa', tfil: 'Todos', tblq: 'Todos', tver: 'estado', hvista: 'hoy', semOff: 0, mesOff: 0, gtab: 'mat', gsel: null, gfT: '', gfK: '', gfP: '', ptab: 'horas', sfil: 'Todos' }
 });
@@ -171,11 +171,15 @@ function migrar(S) {
   if (!Array.isArray(S.conv.fechas)) S.conv.fechas = FECHAS_DEF();
   if (!Array.isArray(S.conv.enlaces)) S.conv.enlaces = ENLACES_DEF();
   if (!Array.isArray(S.aj.dias)) S.aj.dias = [1, 2, 3, 4, 5];
+  if (!S.copia.subidos) S.copia.subidos = {};
   Object.values(S.temas).forEach(t => { (t.flaq || []).forEach(f => { if (f.e == null) { f.e = f.ok ? 2 : 0; if (f.ok) f.res = f.ts; } delete f.ok; });
     if (t.v == null) t.v = 0; if (!t.ix) t.ix = { modo: 'ori', ori: {}, per: [] }; if (!t.comp) t.comp = {}; });
   S.tarjetas.forEach(c => { if (!c.tipo) c.tipo = 'girar'; });
 }
-function save() { try { localStorage.setItem('ruta71', JSON.stringify(S)); } catch (e) { toast('No queda espacio para guardar. Exporta tus datos.'); } }
+let COPT = null;
+function save(sinCopia) { try { localStorage.setItem('ruta71', JSON.stringify(S)); } catch (e) { toast('No queda espacio para guardar. Exporta tus datos.'); }
+  /* copia en tu Google: se guarda sola unos minutos después del último cambio */
+  if (!sinCopia && S.copia && S.copia.url && typeof copiaGuardar === 'function') { clearTimeout(COPT); COPT = setTimeout(() => copiaGuardar(true), 3 * 6e4); } }
 save();
 let PILA = [];
 function commit(fn, aviso, deshacer = true) { PILA.push(JSON.stringify(S)); if (PILA.length > 25) PILA.shift(); fn(); save(); refresh(); if (aviso) toast(aviso, deshacer); }
@@ -306,7 +310,7 @@ function pintar(modo) {
 function refresh() { if (!ACT) return; const v = $('#view'), y = v.scrollTop; v.innerHTML = R[ACT] ? R[ACT](P) : ''; v.scrollTop = y; if (A_RENDER[ACT]) A_RENDER[ACT](v, true); }
 function navHtml() {
   return `<nav class="tabbar">${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 23)}<span>${t}</span></button>`).join('')}</nav>
-    <aside class="side"><div class="marca">Ruta 71</div><div class="slogside">Tema a tema, hasta la plaza.</div>${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 20)}<span>${t}</span></button>`).join('')}
+    <aside class="side"><div class="marca"><span class="logoimg"><img class="lg-c" src="icons/logo.png" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="icons/logo-oscuro.png" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div>${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 20)}<span>${t}</span></button>`).join('')}
     <button class="navbtn" data-a="ir" data-x="ajustes">${ic('ajustes', 20)}<span>Ajustes</span></button>
     <div class="sidecount"><small>Para el examen</small><b class="m">${diasExamen()}</b><small>días · ${S.conv.aprox ? 'hacia ' : ''}${fechaLarga(S.conv.fecha).replace(/^\S+ /, '')}</small></div></aside>`;
 }
@@ -323,7 +327,7 @@ R.bienvenida = () => {
   const dots = Array.from({ length: 5 }, (_, i) => `<i class="${i === ONB ? 'on' : ''}"></i>`).join('');
   const pasos = [
     () => ['Un plano para llegar al examen.', 'Ruta 71 te ayuda a preparar la oposición tema a tema: qué sabes, qué te falla, qué toca repasar hoy y qué probabilidad tienes de que salga uno que dominas.',
-      `<div class="logo">Ruta 71</div><div class="slog">Tema a tema, hasta la plaza.</div><div class="card">${rutaSvg(8, 3, 3)}<div class="s2">Cada tema es una parada. Avanzas cuando lo dominas.</div></div>`],
+      `<div class="logo"><span class="logoimg"><img class="lg-c" src="icons/logo.png" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="icons/logo-oscuro.png" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div><div class="card">${rutaSvg(8, 3, 3)}<div class="s2">Cada tema es una parada. Avanzas cuando lo dominas.</div></div>`],
     () => ['¿Qué preparas?', 'Con esto ajusto cuántas bolas salen, cuánto dura el tema y la cuenta atrás. Todo se puede cambiar después en Ajustes.',
       `<div class="lab">Convocatoria</div><div class="card"><label class="srow"><span>Convocatoria</span><input class="tx" data-c="nombre" value="${esc(S.conv.nombre)}"></label>
         <label class="srow"><span>Especialidad</span><input class="tx" data-c="esp" value="${esc(S.conv.esp)}"></label>
@@ -555,16 +559,34 @@ let FCV = null;
 /* ===================================================================== Sesión de estudio */
 let SES = null; try { SES = JSON.parse(localStorage.getItem('ruta71.ses') || 'null'); } catch (e) {}
 const saveSes = () => { try { localStorage.setItem('ruta71.ses', JSON.stringify(SES)); } catch (e) {} };
-const sesMs = () => !SES ? 0 : (SES.pausado || Date.now()) - SES.ini - (SES.pausas || 0);
+const sesMs = () => !SES ? 0 : (SES.pausado || Date.now()) - SES.ini - (SES.pausas || 0) + (SES.salto || 0);
+/* sesión por bloques: en qué bloque o pausa vas */
+function faseSes(e = sesMs()) {
+  const q = SES.blq; if (!q) return null;
+  const B = q.b * 6e4, ext = SES.ext || {}; let t = 0;
+  for (let i = 0; i < q.n; i++) {
+    if (e < t + B) return { tipo: 'bloque', i, rest: t + B - e, tot: B, est: i * B + (e - t) };
+    t += B; if (i === q.n - 1) return { tipo: 'fin', i, rest: 0, tot: 1, est: q.n * B, fin: t };
+    const pz = Math.max(0, q.p * 6e4 + (ext[i] || 0));
+    if (e < t + pz) return { tipo: 'pausa', i, rest: t + pz - e, tot: pz, est: (i + 1) * B };
+    t += pz;
+  }
+}
+const minEstudiados = () => Math.max(1, Math.round((SES.blq ? faseSes().est : sesMs()) / 6e4));
 let RAF = null;
 R.sesion = () => {
   if (!SES) return '';
-  const dur = SES.dur * 6e4;
-  return `<div class="pg narrow"><div class="col">${topBar('Salir')}
-    <div class="center"><div class="kick">${SES.pausado ? 'En pausa' : 'Estudiando'}</div><h1>Tema ${SES.n}</h1><div class="sub">${esc(titCorto(SES.n))}</div></div>
-    <div class="timer">${anillo(240, 0, '00:00', 'de ' + horasTxt(SES.dur), 'ses')}</div>
+  const f = faseSes(), q = SES.blq;
+  const kick = SES.pausado ? 'En pausa' : !f ? 'Estudiando' : f.tipo === 'pausa' ? `Descanso · después, bloque ${f.i + 2} de ${q.n}` : f.tipo === 'fin' ? 'Bloques terminados' : `Bloque ${f.i + 1} de ${q.n}`;
+  const botones = f && f.tipo === 'pausa' ? `${btn(ic('mas', 18) + '5 min más', 'ses-mas5', '', 'soft')}${btn('Saltar el descanso', 'ses-saltar')}`
+    : f && f.tipo === 'fin' ? `${btn(ic('mas', 18) + 'Otro bloque', 'ses-otro', '', 'soft')}${btn('Terminar', 'ses-fin')}`
+    : `${btn(ic(SES.pausado ? 'play' : 'pausa', 18) + (SES.pausado ? 'Seguir' : 'Pausa'), 'ses-pausa', '', 'soft')}${btn('Terminar', 'ses-fin')}`;
+  return `<div class="pg narrow ${f && f.tipo === 'pausa' ? 'descanso' : ''}"><div class="col">${topBar('Salir')}
+    <div class="center"><div class="kick" id="ses-k">${kick}</div><h1>Tema ${SES.n}</h1><div class="sub">${esc(titCorto(SES.n))}</div></div>
+    <div class="timer">${anillo(240, 0, '00:00', q ? (f.tipo === 'pausa' ? 'de descanso' : f.tipo === 'fin' ? horasTxt(q.n * q.b) + ' estudiados' : 'quedan del bloque') : 'de ' + horasTxt(SES.dur), 'ses')}</div>
+    ${q ? `<div class="bloques">${Array.from({ length: q.n }, (_, i) => `<i class="${i < f.i || f.tipo === 'fin' || (i === f.i && f.tipo === 'pausa') ? 'hecho' : i === f.i ? 'ahora' : ''}"></i>`).join('')}</div>` : ''}
     <div class="card"><div class="cl"><span>Mientras estudias, apunta</span></div><div class="minis"><button data-a="apunta" data-x="flaq">${ic('alerta', 20)}Flaqueza</button><button data-a="apunta" data-x="tarjeta">${ic('tarjeta', 20)}Tarjeta</button><button data-a="apunta" data-x="cosa">${ic('marca', 20)}Para memorizar</button></div></div>
-    <div class="sp"></div><div class="two">${btn(ic(SES.pausado ? 'play' : 'pausa', 18) + (SES.pausado ? 'Seguir' : 'Pausa'), 'ses-pausa', '', 'soft')}${btn('Terminar', 'ses-fin')}</div></div></div>`;
+    <div class="sp"></div><div class="two">${botones}</div></div></div>`;
 };
 function anillo(size, frac, txt, sub, id) {
   const r = size / 2 - 13, c = 2 * Math.PI * r;
@@ -574,8 +596,16 @@ function pintarAnillo(id, ms, total, txt) {
   const a = $('#' + id + '-arc'), t = $('#' + id + '-t'); if (!a) return;
   const c = +a.dataset.c; a.setAttribute('stroke-dasharray', `${(c * Math.min(1, Math.max(0, ms / total))).toFixed(1)} ${c}`); if (t) t.textContent = txt;
 }
-A_RENDER.sesion = () => { pantallaEncendida(true); cancelAnimationFrame(RAF); const loop = () => { if (ACT !== 'sesion' || !SES) return; const ms = sesMs(); pintarAnillo('ses', ms, SES.dur * 6e4, hm(ms));
-  if (!SES.avisado && ms >= SES.dur * 6e4) { SES.avisado = true; saveSes(); sonar('fin'); toast(`Has llegado a ${horasTxt(SES.dur)}. Termina cuando quieras.`); } RAF = requestAnimationFrame(loop); }; RAF = requestAnimationFrame(loop); };
+A_RENDER.sesion = () => { pantallaEncendida(true); cancelAnimationFrame(RAF); const a = $('#ses-arc'), f0 = faseSes(); if (a && f0 && f0.tipo === 'pausa') a.setAttribute('stroke', 'var(--cyan)');
+  const loop = () => { if (ACT !== 'sesion' || !SES) return;
+    if (SES.blq) { const f = faseSes(), k = f.tipo + f.i;
+      pintarAnillo('ses', f.tipo === 'fin' ? 1 : f.tot - f.rest, f.tot, f.tipo === 'fin' ? 'Listo' : hm(f.rest));
+      if (SES.fase !== k) { const antes = SES.fase; SES.fase = k; saveSes();
+        if (antes) { sonar(f.tipo === 'fin' ? 'fin' : 'aviso'); toast(f.tipo === 'pausa' ? `Bloque ${f.i + 1} hecho. Descansa ${horasTxt(SES.blq.p)}.` : f.tipo === 'fin' ? 'Has terminado todos los bloques.' : `A por el bloque ${f.i + 1} de ${SES.blq.n}.`); }
+        if (antes) { refresh(); return; } } }
+    else { const ms = sesMs(); pintarAnillo('ses', ms, SES.dur * 6e4, hm(ms));
+      if (!SES.avisado && ms >= SES.dur * 6e4) { SES.avisado = true; saveSes(); sonar('fin'); toast(`Has llegado a ${horasTxt(SES.dur)}. Termina cuando quieras.`); } }
+    RAF = requestAnimationFrame(loop); }; RAF = requestAnimationFrame(loop); };
 A_SALIR.sesion = () => { cancelAnimationFrame(RAF); pantallaEncendida(false); };
 let FINS = null;
 R['fin-sesion'] = () => {
@@ -720,7 +750,7 @@ function htmlFicha(n, enSplit) {
     <div class="stats">${[[t.conf ? t.conf + '/5' : '–', 'confianza'], [t.min ? horasTxt(t.min) : '0 min', 'estudiado'], [t.ult ? diasEntre(t.ult, hoy()) + ' d' : '–', 'sin repasar'], [ns != null ? nota1(ns) : '–', 'último simulacro']].map(([a, b]) => `<div><b class="m">${a}</b><small>${b}</small></div>`).join('')}</div>
     ${secT('temario', 'Estado')}${estadoChips(n, 'f-est')}
     <label class="row tgrow"><div class="grow"><b>Lo llevo al examen</b><small>Es uno de los temas que preparas a fondo</small></div><button class="tgl ${t.mio ? 'on' : ''}" data-a="f-mio" data-x="${n}"><i></i></button></label>
-    <div class="row tgrow"><div class="grow"><b>Vueltas: ${t.v || 0}</b><small>${t.vts ? 'Última, el ' + fechaCorta(t.vts) : 'Todavía ninguna'}</small></div><button class="pill2" data-a="f-vuelta" data-x="${n}">${ic('mas', 14, 2.2)}Cerrar vuelta ${(t.v || 0) + 1}</button></div>
+    <div class="row tgrow"><div class="grow"><b>Vueltas</b><small>${t.v ? `Vas por la vuelta ${t.v + 1}${t.vts ? ' · la última la cerraste el ' + fechaCorta(t.vts) : ''}` : 'Todavía no has cerrado ninguna'}</small></div><span class="stp"><button data-a="f-vuelta" data-x="-1" data-n="${n}" aria-label="Una vuelta menos">−</button><b class="m">${t.v || 0}</b><button data-a="f-vuelta" data-x="1" data-n="${n}" aria-label="Cerrar una vuelta">+</button></span></div>
     <div class="two" style="margin-top:14px">${btn(ic('crono', 18) + 'Estudiar', 'estudiar', n, 'soft')}${btn(ic('sim', 18) + 'Simulacro', 'sim-tema', n, 'soft')}</div>
     ${segHtml(tabs, FTAB, 'f-tab')}${cuerpo}`;
 }
@@ -781,13 +811,24 @@ let FT = null;
 function abrirTarjeta(id, n, pre) {
   const c = id ? S.tarjetas.find(x => x.id === id) : null;
   FT = c ? { id: c.id, tipo: c.tipo || 'girar', q: c.q, a: c.a, tema: c.tema, arch: !!c.arch } : Object.assign({ id: null, tipo: 'girar', q: '', a: '', tema: n || (ACT === 'tema' ? P.n : TSEL) || siguientesTemas(1)[0] || 1, arch: false }, pre || {});
+  const h = deCorchetes(FT.tipo === 'huecos' ? FT.q : ''); FT.plano = FT.tipo === 'huecos' ? h.plano : FT.q; FT.hid = h.hid; if (FT.tipo !== 'huecos') FT.plano = FT.q;
   hoja(htmlTarjeta(), () => setTimeout(() => { const i = $('#ft-q'); if (i && !FT.id && !FT.q) i.focus({ preventScroll: true }); }, 350));
 }
-function leerFT() { if ($('#ft-q')) FT.q = $('#ft-q').value; if ($('#ft-a')) FT.a = $('#ft-a').value; if ($('#ft-t')) FT.tema = +$('#ft-t').value; }
+function leerFT() { if ($('#ft-q')) { FT.plano = $('#ft-q').value; FT.q = FT.tipo === 'huecos' ? aCorchetes(FT.plano, FT.hid) : FT.plano; } if ($('#ft-a')) FT.a = $('#ft-a').value; if ($('#ft-t')) FT.tema = +$('#ft-t').value; }
+/* huecos: el texto se guarda con corchetes, pero se edita tocando palabras */
+const trozos = t => String(t || '').split(/(\s+)/);
+function deCorchetes(q) { let dentro = false, k = 0; const hid = [], out = [];
+  trozos(q).forEach(w => { if (/^\s+$/.test(w) || !w) { out.push(w); return; } if (w.includes('[')) dentro = true; if (dentro) hid.push(k); if (w.includes(']')) dentro = false; out.push(w.replace(/[\[\]]/g, '')); k++; });
+  return { plano: out.join(''), hid }; }
+function aCorchetes(plano, hid) { let k = 0; return trozos(plano).map(w => { if (/^\s+$/.test(w) || !w) return w; const i = k++; if (!hid.includes(i)) return w;
+  const m = w.match(/^([¿¡("«]*)(.*?)([.,;:!?)»"]*)$/); return m && m[2] ? `${m[1]}[${m[2]}]${m[3]}` : `[${w}]`; }).join(''); }
+const htmlPalabras = () => { let k = 0; const ws = trozos(FT.plano).filter(w => w && !/^\s+$/.test(w));
+  return ws.length ? ws.map(w => { const i = k++; return `<button class="pal ${FT.hid.includes(i) ? 'on' : ''}" data-a="ft-pal" data-x="${i}">${esc(w)}</button>`; }).join('') : '<span class="s2">Escribe el texto arriba y aparecerán aquí sus palabras.</span>'; };
 const htmlTarjeta = () => `<h2>${FT.id ? 'Editar tarjeta' : 'Nueva tarjeta'}</h2>
   <div class="lab">Tipo</div>${segHtml(Object.entries(TIPOS_T), FT.tipo, 'ft-tipo')}
-  <p class="note">${FT.tipo === 'girar' ? 'Ves la pregunta, piensas la respuesta y la giras.' : FT.tipo === 'escribir' ? 'Escribes la respuesta de memoria y luego la comparas.' : 'Pon entre corchetes lo que hay que rellenar. Ej.: i = [n₂] / [n₁] = Z₁ / Z₂'}</p>
-  ${FT.tipo === 'huecos' ? `<div class="lab">Texto</div><textarea class="inp" id="ft-q" style="min-height:80px" placeholder="i = [n₂] / [n₁]">${esc(FT.q)}</textarea>
+  <p class="note">${FT.tipo === 'girar' ? 'Ves la pregunta, piensas la respuesta y la giras.' : FT.tipo === 'escribir' ? 'Escribes la respuesta de memoria y luego la comparas.' : 'Escribe la frase entera y toca las palabras que quieres esconder. Al repasar, saldrán como huecos para rellenar.'}</p>
+  ${FT.tipo === 'huecos' ? `<div class="lab">Texto</div><textarea class="inp" id="ft-q" style="min-height:70px" placeholder="Ej.: La ley de Ohm dice que V = I · R">${esc(FT.plano)}</textarea>
+    <div class="lab">Toca lo que quieres esconder</div><div class="palabras" id="ft-pal">${htmlPalabras()}</div>
     <div class="lab">Explicación (opcional)</div><textarea class="inp" id="ft-a" style="min-height:60px" placeholder="Sale al comprobar">${esc(FT.a)}</textarea>`
   : `<div class="lab">Pregunta</div><textarea class="inp" id="ft-q" style="min-height:64px" placeholder="Ej.: ¿Qué es la relación de transmisión?">${esc(FT.q)}</textarea>
     <div class="lab">Respuesta</div><textarea class="inp" id="ft-a" style="min-height:100px" placeholder="Lo que tendrías que contestar">${esc(FT.a)}</textarea>`}
@@ -1359,7 +1400,7 @@ R.ajustes = () => {
     ${secT('nube', 'Copia de lo tuyo en Google')}<div class="card"><div class="srow"><span>Estado</span><span class="${cp.error ? 'err' : 'ok'}">${!cp.url ? 'Sin conectar' : cp.error ? 'No se ha podido guardar' : cp.ult ? 'Guardado ' + horaCorta(cp.ult) : 'Conectada'}</span></div>
       <label class="srow"><span>URL del script</span><input class="tx" data-cp="url" value="${esc(cp.url)}" placeholder="https://script.google.com/…"></label><label class="srow"><span>Clave</span><input class="tx" data-cp="clave" value="${esc(cp.clave)}"></label>
       ${cp.url ? `<div class="two" style="margin:10px 0 4px">${btn('Recuperar', 'cp-rec', '', 'soft sm')}${btn('Guardar ahora', 'cp-guardar', '', 'sm')}</div>` : ''}
-      <div class="s2">Sirve para tener lo mismo en el móvil y en el ordenador: guarda en uno y recupera en el otro.</div></div>
+      <div class="s2">Se guarda sola unos minutos después de cada cambio, con tus fotos y PDF, en una hoja y una carpeta de tu Drive. Para pasarla a otro dispositivo, pega la misma URL y clave allí y pulsa «Recuperar». Usa una hoja y una clave distintas de las del grupo.</div></div>
     ${secT('ojo', 'Apariencia y sonido')}${segHtml([['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']], S.aj.tema, 'tema-ap')}
     <div class="card"><div class="srow"><span>Avisos con sonido en el examen</span>${tgl('sonido', S.aj.sonido)}</div><button class="srow" data-a="probar-sonido"><span class="acc">Probar el sonido</span></button></div>
     ${secT('archivo', 'Tus datos')}<div class="card"><button class="srow" data-a="exportar"><span>Exportar a un archivo</span>${ic('sig', 15)}</button>
@@ -1497,7 +1538,8 @@ Object.assign(ACC, {
   'ag-reajustar': () => { let k = 0; commit(() => { k = reajustar(); }); toast(`${plural(k, 'bloque movido', 'bloques movidos')} a los próximos días`, true); },
   'ag-empezar': x => { const b = S.agenda.find(y => y.id === x); if (!b) return;
     if (b.k === 'simulacro') { ACC['sim-tema'](b.n); return; }
-    SES = { n: b.n, ini: Date.now(), pausas: 0, pausado: null, dur: b.min, apuntes: [], bloque: b.id }; saveSes(); go('sesion', {}, 'fade'); },
+    const pe = S.aj.est || {}, blq = pe.m === 'bloques' ? { b: pe.b, p: pe.p, n: Math.max(1, Math.round(b.min / pe.b)) } : null;
+    SES = { n: b.n, ini: Date.now(), pausas: 0, pausado: null, dur: blq ? blq.n * blq.b : b.min, apuntes: [], bloque: b.id, blq }; saveSes(); go('sesion', {}, 'fade'); },
   'fb-k': x => { leerFB(); FB.k = x; repintarHoja(htmlBloque()); },
   'fb-min': x => { leerFB(); FB.min = +x; repintarHoja(htmlBloque()); },
   'fb-rep': (x, b) => { FB.rep = !FB.rep; b.classList.toggle('on', FB.rep); },
@@ -1513,9 +1555,17 @@ Object.assign(ACC, {
   'est-tema': x => { EST_N = +x; repintarHoja(htmlEstudiar()); },
   'est-dur': x => { EST_D = +x; repintarHoja(htmlEstudiar()); },
   'est-ok': () => { const sel = $('#est-sel'); if (sel && sel.value) EST_N = +sel.value; if (!EST_N) { toast('Elige un tema'); return; }
-    SES = { n: EST_N, ini: Date.now(), pausas: 0, pausado: null, dur: EST_D, apuntes: [] }; saveSes(); cerrarHoja(); go('sesion', {}, 'fade'); },
+    S.aj.est = { m: EST_M, b: EST_B, p: EST_P, n: EST_NB, d: EST_D }; save();
+    SES = { n: EST_N, ini: Date.now(), pausas: 0, pausado: null, dur: EST_M === 'bloques' ? EST_NB * EST_B : EST_D, apuntes: [], blq: EST_M === 'bloques' ? { b: EST_B, p: EST_P, n: EST_NB } : null }; saveSes(); cerrarHoja(); go('sesion', {}, 'fade'); },
+  'ses-saltar': () => { const f = faseSes(); if (f && f.tipo === 'pausa') { SES.salto = (SES.salto || 0) + f.rest + 50; saveSes(); } },
+  'ses-mas5': () => { const f = faseSes(); if (!f || f.tipo !== 'pausa') return; SES.ext = SES.ext || {}; SES.ext[f.i] = (SES.ext[f.i] || 0) + 5 * 6e4; saveSes(); toast('5 minutos más de descanso'); },
+  'ses-otro': () => { const f = faseSes(); if (!f || f.tipo !== 'fin') return; const e = sesMs(); SES.ext = SES.ext || {}; SES.ext[f.i] = (e - f.fin) - SES.blq.p * 6e4; SES.blq.n++; SES.fase = null; saveSes(); refresh(); },
+  'est-modo': x => { EST_M = x; repintarHoja(htmlEstudiar()); },
+  'est-b': x => { EST_B = +x; repintarHoja(htmlEstudiar()); },
+  'est-p': x => { EST_P = +x; repintarHoja(htmlEstudiar()); },
+  'est-n': x => { EST_NB = Math.max(1, Math.min(8, EST_NB + +x)); repintarHoja(htmlEstudiar()); },
   'ses-pausa': () => { if (SES.pausado) { SES.pausas += Date.now() - SES.pausado; SES.pausado = null; } else SES.pausado = Date.now(); saveSes(); refresh(); },
-  'ses-fin': () => { const min = Math.max(1, Math.round(sesMs() / 6e4)), s = SES;
+  'ses-fin': () => { const min = minEstudiados(), s = SES;
     commit(() => { S.sesiones.push({ ts: s.ini, n: s.n, min }); const t = tema(s.n); t.min = (t.min || 0) + min; t.ult = hoy(); if (t.e === 0) cambiarEstado(s.n, 1);
       const b = s.bloque ? S.agenda.find(y => y.id === s.bloque) : null; if (b) { b.hecho = true; if (b.ap) marcarApartado(s.n, b.ap); } else marcarBloque(s.n, 'estudiar'); });
     FINS = { n: s.n, min, conf: null, apuntes: s.apuntes || [] }; SES = null; saveSes(); go('fin-sesion', {}, 'fade'); },
@@ -1541,7 +1591,9 @@ Object.assign(ACC, {
   't-blq': x => { TOPEN[x] = !TOPEN[x]; refresh(); },
   'f-est': (x, b) => { const n = b.dataset.n ? +b.dataset.n : fichaN(); cerrarHoja(); commit(() => cambiarEstado(n, +x), `Tema ${n}: ${NOMS[+x].toLowerCase()}`); animTile('.fhead .tl'); },
   'f-mio': x => commit(() => { tema(+x).mio = !tema(+x).mio; }),
-  'f-vuelta': x => { const n = +x; commit(() => { const t = tema(n); t.v = (t.v || 0) + 1; t.vts = hoy(); t.ult = hoy(); }, `Tema ${n}: vuelta ${tema(n).v + 1} cerrada`); animTile('.fhead .tl'); },
+  'f-vuelta': (x, b) => { const n = +b.dataset.n, d = +x, t0 = tema(n); if (d < 0 && !t0.v) return;
+    commit(() => { const t = tema(n); t.v = Math.max(0, (t.v || 0) + d); if (d > 0) { t.vts = hoy(); t.ult = hoy(); } else if (!t.v) t.vts = null; },
+      d > 0 ? `Tema ${n}: vuelta ${(t0.v || 0) + 1} cerrada` : `Tema ${n}: ${t0.v - 1 ? 'vuelves a ' + plural(t0.v - 1, 'vuelta', 'vueltas') : 'sin vueltas'}`); animTile('.fhead .tl'); },
   'f-tab': x => { FTAB = x; refresh(); },
   'flaq-add': () => { const v = val('nf'), n = fichaN(); if (!v) return; commit(() => { tema(n).flaq.push({ id: uid(), txt: v, e: 0, ts: Date.now() }); tocado(n, 'flaq'); }); setTimeout(() => { const i = $('#nf'); if (i) i.focus({ preventScroll: true }); }, 30); },
   'flaq-e': x => { const n = fichaN(); let e = 0; commit(() => { const f = tema(n).flaq.find(y => y.id === x); f.e = Math.min(2, (f.e || 0) + 1); e = f.e; if (e === 2) f.res = Date.now(); tocado(n, 'flaq'); }, null);
@@ -1580,10 +1632,11 @@ Object.assign(ACC, {
   /* tarjetas */
   'nueva-tarjeta': x => abrirTarjeta(null, x ? +x : null),
   'editar-tarjeta': x => abrirTarjeta(x),
-  'ft-tipo': x => { leerFT(); FT.tipo = x; repintarHoja(htmlTarjeta()); },
+  'ft-tipo': x => { leerFT(); if (x === 'huecos' && FT.tipo !== 'huecos') { const h = deCorchetes(FT.plano); FT.plano = h.plano; FT.hid = h.hid; } FT.tipo = x; repintarHoja(htmlTarjeta()); },
+  'ft-pal': x => { const i = +x; FT.hid = FT.hid.includes(i) ? FT.hid.filter(y => y !== i) : FT.hid.concat(i); const b = $(`[data-a="ft-pal"][data-x="${i}"]`); if (b) { b.classList.toggle('on', FT.hid.includes(i)); animar(b, v => ({ transform: `scale(${.85 + .15 * v})` }), { w: 16, z: 8 }); } },
   'ft-ok': () => {
     leerFT(); const q = FT.q.trim(), a = FT.a.trim(), n = FT.tema, f = FT; if (!q) { toast(f.tipo === 'huecos' ? 'Escribe el texto' : 'Escribe la pregunta'); return; }
-    if (f.tipo === 'huecos' && !/\[[^\]]+\]/.test(q)) { toast('Pon entre corchetes lo que hay que rellenar'); return; }
+    if (f.tipo === 'huecos' && !/\[[^\]]+\]/.test(q)) { toast('Toca al menos una palabra para esconderla'); return; }
     cerrarHoja(); let nid = null;
     commit(() => { if (f.id) { const c = S.tarjetas.find(k => k.id === f.id), viejo = c.tema; Object.assign(c, { q, a, tema: n, tipo: f.tipo }); if (viejo !== n) tocado(viejo, 'tarjetas'); }
       else { nid = uid(); S.tarjetas.push({ id: nid, tema: n, tipo: f.tipo, q, a, prox: hoy(), int: 0, ease: 2.5 }); if (f.cosa) { const c = tema(n).cosas.find(y => y.id === f.cosa); if (c) c.card = nid; } }
@@ -1595,7 +1648,8 @@ Object.assign(ACC, {
   'ft-del': () => { const id = FT.id; cerrarHoja(); commit(() => { const c = S.tarjetas.find(k => k.id === id); S.tarjetas = S.tarjetas.filter(k => k.id !== id); if (c) tocado(c.tema, 'tarjetas'); }, 'Tarjeta borrada', true); },
   'repasar': x => { const n = x ? +x : null; const xs = (n ? S.tarjetas.filter(c => c.tema === n) : tarjetasHoy()).filter(c => !c.arch); const hoyN = xs.filter(c => !c.prox || c.prox <= hoy());
     const lista = (hoyN.length ? hoyN : xs).slice(0, 40); if (!lista.length) { toast('No hay tarjetas que repasar'); return; } repasoCon(lista); },
-  'rp-ver': () => { RP.vuelta = true; refresh(); const f = $('.flip'); if (f) f.classList.add('on'); subirBotones(); },
+  'rp-ver': () => { const c = S.tarjetas.find(y => y.id === RP.cola[RP.i]); RP.vuelta = true; const f = $('.flip'), b = $('.btn[data-a="rp-ver"]');
+    if (!f || !b || !c) { refresh(); return; } f.dataset.a = ''; void f.offsetWidth; f.classList.add('on'); b.outerHTML = cuatro(c); subirBotones(); },
   'rp-comp': () => { const e = $('#rp-esc'); if (e) RP.esc = e.value; const hs = $$('.hin'); if (hs.length) RP.resp = hs.map(i => i.value); RP.vuelta = true; refresh();
     $$('.hueco').forEach((h, i) => animar(h, v => ({ transform: `scale(${.8 + .2 * v})` }), { w: 15, z: 7, delay: i * 70 })); subirBotones(); },
   'rp-nota': x => { const c = S.tarjetas.find(y => y.id === RP.cola[RP.i]); if (c) { notaTarjeta(c, +x); if (+x === 0) RP.cola.push(c.id); save(); } RP.hechas++; RP.i++; RP.vuelta = false; RP.esc = ''; RP.resp = []; pintar('push'); },
@@ -1775,6 +1829,7 @@ Object.assign(ACC, {
   'borrar-todo': (x, b) => { if (b.dataset.c !== '1') { b.dataset.c = '1'; b.innerHTML = '<span>Toca otra vez para borrarlo todo</span>'; setTimeout(() => { if (b.isConnected) { b.dataset.c = ''; b.innerHTML = '<span>Borrar todo</span>'; } }, 3500); return; }
     commit(() => { const g = S.grupos, yo = S.yo, gs = S.ui.gsel; S = DEF(); S.grupos = g; S.yo = yo; S.ui.gsel = gs; S.onb = true; }, 'Todo borrado', true); }
 });
+let EST_M = 'seguido', EST_B = 25, EST_P = 5, EST_NB = 4;
 let APK = null, EST_N = null, EST_D = 60, RB = [], S2 = null, GU = [], FIX = null;
 const fichaN = () => ACT === 'tema' ? P.n : TSEL;
 function abrirGruposSecPintar() { const f = FCG; $$('[data-a="fcg-g"]').forEach(b => { const on = f.ids.includes(b.dataset.x); b.classList.toggle('sel', on); const c = b.querySelector('.chk'); c.classList.toggle('on', on); c.innerHTML = on ? ic('check', 14, 2.6) : ''; }); }
@@ -1782,7 +1837,8 @@ function marcarApartado(n, ap) { const ix = tema(n).ix; if (ix.modo === 'per') {
 function leerRB() { $$('[data-rb]').forEach(i => { const k = i.dataset.rb, j = +i.dataset.i; if (RB[j]) RB[j][k] = k === 'p' ? +i.value : i.value; }); }
 function leerGU() { $$('[data-gu]').forEach(i => { const k = i.dataset.gu, j = +i.dataset.i; if (GU[j]) GU[j][k] = k === 'm' ? +i.value : i.value; }); }
 function abrirEstudiar(n) {
-  EST_N = n || (loQueToca().find(x => x.n) || {}).n || siguientesTemas(1)[0] || null; EST_D = 60;
+  EST_N = n || (loQueToca().find(x => x.n) || {}).n || siguientesTemas(1)[0] || null; const pe = S.aj.est || {};
+  EST_D = pe.d || 60; EST_M = pe.m || 'seguido'; EST_B = pe.b || 25; EST_P = pe.p || 5; EST_NB = pe.n || 4;
   hoja(htmlEstudiar());
 }
 function htmlEstudiar() {
@@ -1790,7 +1846,12 @@ function htmlEstudiar() {
   return `<h2>¿Qué vas a estudiar?</h2><div class="sub">El cronómetro apunta las horas a ese tema.</div>
     <div class="lab">Sugeridos</div><div class="tiles">${sug.map(n => `<button data-a="est-tema" data-x="${n}">${tile(n, est(n), 40, EST_N === n ? 'sel' : '')}</button>`).join('')}</div>
     <div class="lab">O elige cualquiera</div><select class="inp" id="est-sel">${S.temario.map(x => `<option value="${x.n}" ${x.n === EST_N ? 'selected' : ''}>${x.n} · ${esc(titCorto(x.n))}</option>`).join('')}</select>
-    <div class="lab">¿Cuánto rato?</div><div class="chips">${[25, 45, 60, 90, 120].map(m => `<button class="ch ${EST_D === m ? 'on' : ''}" data-a="est-dur" data-x="${m}">${horasTxt(m)}</button>`).join('')}</div>
+    <div class="lab">¿Cómo?</div>${segHtml([['seguido', 'Seguido'], ['bloques', 'Por bloques con descansos']], EST_M, 'est-modo')}
+    ${EST_M === 'bloques' ? `<div class="lab">Cada bloque</div><div class="chips" style="margin-top:0">${[25, 30, 45, 50].map(m => `<button class="ch ${EST_B === m ? 'on' : ''}" data-a="est-b" data-x="${m}">${m} min</button>`).join('')}</div>
+      <div class="lab">Descanso entre bloques</div><div class="chips" style="margin-top:0">${[5, 10, 15].map(m => `<button class="ch ${EST_P === m ? 'on' : ''}" data-a="est-p" data-x="${m}">${m} min</button>`).join('')}</div>
+      <div class="srow" style="margin-top:8px"><span>Número de bloques</span><span class="stp"><button data-a="est-n" data-x="-1" aria-label="Menos">−</button><b class="m">${EST_NB}</b><button data-a="est-n" data-x="1" aria-label="Más">+</button></span></div>
+      <p class="note">${EST_NB} × ${EST_B} min${EST_NB > 1 ? ` + ${plural(EST_NB - 1, 'descanso', 'descansos')} de ${EST_P}` : ''} = ${horasTxt(EST_NB * EST_B + (EST_NB - 1) * EST_P)}. Solo cuentan como estudiados los bloques. Suena al acabar cada bloque y cada descanso.</p>`
+    : `<div class="lab">¿Cuánto rato?</div><div class="chips" style="margin-top:0">${[25, 45, 60, 90, 120].map(m => `<button class="ch ${EST_D === m ? 'on' : ''}" data-a="est-dur" data-x="${m}">${horasTxt(m)}</button>`).join('')}</div>`}
     <div style="height:14px"></div>${btn('Empezar', 'est-ok')}`;
 }
 async function publicar(p, silencio) {
@@ -1808,18 +1869,30 @@ function pedirUnirse() {
 }
 
 /* copia privada en Google */
+/* fotos y PDF que solo están en este dispositivo */
+function archivosLocales() { const ids = []; S.sims.forEach(s => (s.fotos || []).forEach(f => ids.push(f))); S.examenes.forEach(x => ids.push('x.' + x.id)); return ids; }
+let COPIANDO = false;
 async function copiaGuardar(silencio) {
   if (!S.copia.url) { if (!silencio) toast('Primero pega la URL de tu script'); return; }
-  try { await api(S.copia.url, S.copia.clave, 'guardar', { version: VERSION, datos: S }); S.copia.ult = Date.now(); S.copia.error = false; save(); if (!silencio) toast('Copia guardada en tu Google'); }
-  catch (e) { S.copia.error = true; save(); if (!silencio) toast('No se ha podido guardar. Revisa la URL y la clave.'); }
-  if (ACT === 'ajustes') refresh();
+  if (COPIANDO) return; COPIANDO = true; clearTimeout(COPT);
+  try { const u = S.copia.url, k = S.copia.clave; let n = 0;
+    for (const id of archivosLocales()) { if (S.copia.subidos[id]) continue; const b = await IDB.get(id).catch(() => null); if (!b) continue;
+      const j = await api(u, k, 'g-subir', { meta: { tipo: 'copia', titulo: id }, nombre: id + (/pdf/.test(b.type) ? '.pdf' : '.jpg'), mime: b.type || 'image/jpeg', datos: await blobA64(b) }); S.copia.subidos[id] = j.id; n++; }
+    await api(u, k, 'guardar', { version: VERSION, datos: S }); S.copia.ult = Date.now(); S.copia.error = false; save(true);
+    if (!silencio) toast('Copia guardada en tu Google' + (n ? ` (con ${plural(n, 'archivo nuevo', 'archivos nuevos')})` : '')); }
+  catch (e) { S.copia.error = true; save(true); if (!silencio) toast('No se ha podido guardar. Revisa la URL y la clave.'); }
+  COPIANDO = false; if (ACT === 'ajustes') refresh();
 }
 function cargarDatos(d, conservarCopia) {
   const x = DEF(), cp = S.copia; S = Object.assign(x, d); ['yo', 'conv', 'obj', 'p2', 'copia', 'aj', 'ui'].forEach(k => S[k] = Object.assign(x[k], d[k] || {})); if (conservarCopia) S.copia = cp; migrar(S);
 }
 async function copiaRecuperar() {
   try { const j = await api(S.copia.url, S.copia.clave, 'recuperar'); if (!j.datos) { toast('Todavía no hay ninguna copia'); return; }
-    commit(() => cargarDatos(j.datos, true), 'Copia recuperada', true); }
+    const sub = Object.assign({}, (j.datos.copia || {}).subidos || {}, S.copia.subidos || {});
+    commit(() => { cargarDatos(j.datos, true); S.copia.subidos = sub; }, 'Copia recuperada', true);
+    let n = 0; for (const id of archivosLocales()) { if (!sub[id] || await IDB.get(id).catch(() => null)) continue;
+      try { const a = await api(S.copia.url, S.copia.clave, 'g-archivo', { id: sub[id] }); await IDB.put(id, b64ABlob(a.datos, a.mime)); n++; } catch (e) {} }
+    if (n) { toast(`Copia recuperada con ${plural(n, 'foto o PDF', 'fotos o PDF')}`); refresh(); } }
   catch (e) { toast('No se ha podido recuperar'); }
 }
 
@@ -1829,6 +1902,8 @@ document.addEventListener('input', e => {
   const t = e.target;
   if (t.id === 'notas') { const n = +t.dataset.n; clearTimeout(NT); NT = setTimeout(() => { tema(n).notas = t.value; save(); tocado(n, 'notas'); }, 400); }
   if (t.id === 't-bus') { TBUS = t.value; const c = $('#view .card'); if (c) c.innerHTML = S.ui.tmodo === 'mapa' ? htmlMapa(ancho() ? TSEL : null) : htmlLista(); }
+  if (t.id === 'ft-q' && FT && FT.tipo === 'huecos') { const viejas = trozos(FT.plano).filter(w => w && !/^\s+$/.test(w)); FT.plano = t.value; const nuevas = trozos(FT.plano).filter(w => w && !/^\s+$/.test(w));
+    FT.hid = FT.hid.filter(i => i < nuevas.length && viejas[i] === nuevas[i]); const p = $('#ft-pal'); if (p) p.innerHTML = htmlPalabras(); }
   if (t.dataset.rb) { const s = $('#rb-sum'); if (s) s.textContent = 'Suman ' + $$('[data-rb="p"]').reduce((a, i) => a + (+i.value || 0), 0) + ' %.'; }
 });
 document.addEventListener('change', async e => {
