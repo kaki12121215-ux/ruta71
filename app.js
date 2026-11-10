@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.3';
+const VERSION = '1.1.4';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);

@@ -1,5 +1,5 @@
 /* Ruta 71 · service worker: abre sin conexión y recibe versiones nuevas. No toca las llamadas a Google. */
-const VERSION = 'ruta71-1.1.3';
+const VERSION = 'ruta71-1.1.4';
 const ARCHIVOS = ['./', 'index.html', 'app.css', 'app.js', 'manifest.webmanifest', 'sonidos/fin.wav', 'sonidos/aviso.wav',
   'fonts/HerosCn-bold.woff', 'fonts/Inter-regular.woff', 'fonts/Inter-semibold.woff', 'fonts/Inter-bold.woff', 'fonts/Mono-regular.woff', 'fonts/Mono-bold.woff',
   'icons/icon-180.png', 'icons/logo.png', 'icons/logo-oscuro.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/favicon-32.png', 'vendor/pdf-lib.min.js'];
