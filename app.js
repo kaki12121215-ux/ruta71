@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.5';
+const VERSION = '1.1.7';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);
@@ -148,7 +148,7 @@ const DEF = () => ({
   temario: temarioTec(), temas: {}, tarjetas: [], sesiones: [], sims: [], supuestos: [], hist: [], agenda: [], copias: {}, grupos: [], examenes: [],
   p2: { checks: P2_DEF(), sits: [], ensayos: [], guion: GUION_DEF() },
   rubrica: RUBRICA_DEF(),
-  copia: { url: '', clave: '', ult: null, error: false, subidos: {} },
+  copia: { url: '', clave: '', ult: null, error: false, subidos: {}, sinc: false, v: null, mod: 0, devs: {} },
   aj: { tema: 'auto', sonido: true, dias: [1, 2, 3, 4, 5] },
   ui: { tmodo: 'mapa', tfil: 'Todos', tblq: 'Todos', tver: 'estado', hvista: 'hoy', semOff: 0, mesOff: 0, gtab: 'mat', gsel: null, gfT: '', gfK: '', gfP: '', ptab: 'horas', sfil: 'Todos' }
 });
@@ -177,10 +177,13 @@ function migrar(S) {
   S.tarjetas.forEach(c => { if (!c.tipo) c.tipo = 'girar'; });
 }
 let COPT = null;
-function save(sinCopia) { try { localStorage.setItem('ruta71', JSON.stringify(S)); } catch (e) { toast('No queda espacio para guardar. Exporta tus datos.'); }
-  /* copia en tu Google: se guarda sola unos minutos después del último cambio */
-  if (!sinCopia && S.copia && S.copia.url && typeof copiaGuardar === 'function') { clearTimeout(COPT); COPT = setTimeout(() => copiaGuardar(true), 3 * 6e4); } }
-save();
+function save(sinCopia) { if (!sinCopia && S.copia) S.copia.mod = Date.now();
+  try { localStorage.setItem('ruta71', JSON.stringify(S)); } catch (e) { toast('No queda espacio para guardar. Exporta tus datos.'); }
+  if (sinCopia || !S.copia || !S.copia.url) return;
+  /* con «Sincronizar» activado: unos segundos después del último cambio; sin él, la copia de siempre a los 3 minutos */
+  if (S.copia.sinc && typeof sincPronto === 'function') sincPronto();
+  else if (typeof copiaGuardar === 'function') { clearTimeout(COPT); COPT = setTimeout(() => copiaGuardar(true), 3 * 6e4); } }
+save(true);
 let PILA = [];
 function commit(fn, aviso, deshacer = true) { PILA.push(JSON.stringify(S)); if (PILA.length > 25) PILA.shift(); fn(); save(); refresh(); if (aviso) toast(aviso, deshacer); }
 function deshacer() { if (!PILA.length) return; S = JSON.parse(PILA.pop()); save(); refresh(); toast('Deshecho'); }
@@ -310,12 +313,24 @@ function pintar(modo) {
   TCASC = false;
   themeColor();
 }
-function refresh() { if (!ACT) return; const v = $('#view'), y = v.scrollTop; v.innerHTML = R[ACT] ? R[ACT](P) : ''; v.scrollTop = y; if (A_RENDER[ACT]) A_RENDER[ACT](v, true); }
+/* Al repintar la misma pantalla se conserva dónde estabas: la página y cada columna o fila con su propio desplazamiento
+   (en el ordenador, el mapa y la ficha van en dos columnas que se desplazan por separado) */
+function posDesplaz(v) {
+  const out = [], cont = {};
+  v.querySelectorAll('*').forEach(e => { if (!e.scrollTop && !e.scrollLeft) return; const k = e.tagName + '.' + e.className; const i = cont[k] = (cont[k] || 0) + 1; out.push([k, i, e.scrollTop, e.scrollLeft]); });
+  return out;
+}
+function ponDesplaz(v, pos) {
+  if (!pos.length) return; const cont = {}, mapa = {};
+  v.querySelectorAll('*').forEach(e => { const k = e.tagName + '.' + e.className; const i = cont[k] = (cont[k] || 0) + 1; mapa[k + '|' + i] = e; });
+  pos.forEach(([k, i, t, l]) => { const e = mapa[k + '|' + i]; if (e) { e.scrollTop = t; e.scrollLeft = l; } });
+}
+function refresh() { if (!ACT) return; const v = $('#view'), y = v.scrollTop, pos = posDesplaz(v); v.innerHTML = R[ACT] ? R[ACT](P) : ''; v.scrollTop = y; ponDesplaz(v, pos); if (A_RENDER[ACT]) A_RENDER[ACT](v, true); }
 function navHtml() {
   return `<nav class="tabbar">${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 23)}<span>${t}</span></button>`).join('')}</nav>
     <aside class="side"><div class="marca"><span class="logoimg"><img class="lg-c" src="${LOGO_C}" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="${LOGO_O}" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div>${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 20)}<span>${t}</span></button>`).join('')}
     <button class="navbtn" data-a="ir" data-x="ajustes">${ic('ajustes', 20)}<span>Ajustes</span></button>
-    <div class="sidecount"><small>Para el examen</small><b class="m">${diasExamen()}</b><small>días · ${S.conv.aprox ? 'hacia ' : ''}${fechaLarga(S.conv.fecha).replace(/^\S+ /, '')}</small></div></aside>`;
+    <div class="sidecount"><small>Para el examen</small><b class="m">${diasExamen()}</b><small>días · ${S.conv.aprox ? 'hacia ' : ''}${fechaLarga(S.conv.fecha).replace(/^\S+ /, '')}</small></div>${typeof sincBoton === 'function' ? sincBoton() : ''}</aside>`;
 }
 const topBar = (back, right = '') => `<div class="top"><div class="l">${back ? `<button class="back" data-a="atras">${ic('atras', 19, 2.2)}<span>${back}</span></button>` : ''}</div><div class="r">${right}</div></div>`;
 const topTab = (extra = '') => topBar(null, `${extra}<button class="ib solomovil" data-a="ir" data-x="ajustes" aria-label="Ajustes">${ic('ajustes', 22)}</button>`);
@@ -1418,6 +1433,18 @@ function stepper(k, v) { return `<span class="stp"><button data-a="stp" data-k="
 const tgl = (a, on, x = '') => `<button class="tgl ${on ? 'on' : ''}" data-a="${a}" data-x="${x}"><i></i></button>`;
 function invitacion(g = grupoAct()) { const d = { u: g.url, c: g.clave, g: g.nombre }; return location.origin + location.pathname + '#unirse=' + btoa(unescape(encodeURIComponent(JSON.stringify(d)))).replace(/=+$/, ''); }
 let GNUEVO = false;
+const MOVIL_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="3" width="10" height="18" rx="2.2"/><path d="M11 18h2"/></svg>';
+const ORDE_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="5" width="16" height="11" rx="1.6"/><path d="M2.5 19h19"/></svg>';
+function haceTxt(ts) { const m = Math.round((Date.now() - ts) / 6e4); return m < 2 ? 'ahora' : m < 60 ? 'hace ' + m + ' min' : m < 1440 ? 'hace ' + Math.round(m / 60) + ' h' : 'hace ' + plural(Math.round(m / 1440), 'día', 'días'); }
+function estadoAjustes() { const cp = S.copia;
+  if (!cp.url) return '<span>Sin conectar</span>';
+  if (!cp.sinc) return `<span class="${cp.error ? 'err' : 'ok'}">${cp.error ? 'No se ha podido guardar' : cp.ult ? 'Copia guardada ' + horaCorta(cp.ult) : 'Conectada'}</span>`;
+  const e = SINC.estado; if (e === 'gira') return '<span>Sincronizando…</span>'; if (e === 'off') return '<span class="err">Sin conexión</span>';
+  if (e === 'err' || cp.error) return '<span class="err">No se ha podido sincronizar</span>';
+  return `<span class="ok"><i class="pto-ok"></i>${cp.ult ? 'Al día · ' + pad(new Date(cp.ult).getHours()) + ':' + pad(new Date(cp.ult).getMinutes()) : 'Todavía sin sincronizar'}</span>`; }
+function dispositivosHtml() { const ds = Object.assign({}, S.copia.devs || {}); ds[DISP] = { n: nombreDisp(), ts: S.copia.ult || Date.now() };
+  const xs = Object.entries(ds).sort((a, b) => (a[0] === DISP ? -1 : b[0] === DISP ? 1 : b[1].ts - a[1].ts));
+  return `<div class="dispos">${xs.map(([id, d]) => `<div class="row"><span class="dsp">${/Ordenador/.test(d.n) ? ORDE_SVG : MOVIL_SVG}</span><div class="grow"><b>${esc(d.n)}</b><small>${id === DISP ? 'Este dispositivo · ' + (S.copia.ult ? haceTxt(S.copia.ult) : 'sin sincronizar') : 'Última vez ' + haceTxt(d.ts)}</small></div></div>`).join('')}</div>`; }
 R.ajustes = () => {
   const c = S.conv, cp = S.copia;
   return `<div class="pg"><div class="col">${topBar('Atrás')}<h1>Ajustes</h1>
@@ -1442,10 +1469,14 @@ R.ajustes = () => {
         <div style="height:8px"></div>${btn('Crear el grupo', 'g-crear', '', 'sm')}`
       : `<button class="srow acc" data-a="g-nuevo"><span>Crear un grupo</span><em>${ic('mas', 15)}</em></button>`}
       <div class="addin" style="padding-bottom:8px"><input class="inp sm" id="g-link" placeholder="Pega un enlace de invitación" inputmode="url"><button class="pill2" data-a="g-unirme">Unirme</button></div></div>
-    ${secT('nube', 'Copia de lo tuyo en Google')}<div class="card"><div class="srow"><span>Estado</span><span class="${cp.error ? 'err' : 'ok'}">${!cp.url ? 'Sin conectar' : cp.error ? 'No se ha podido guardar' : cp.ult ? 'Guardado ' + horaCorta(cp.ult) : 'Conectada'}</span></div>
+    ${secT('nube', 'Tus dispositivos')}<div class="card">
+      <div class="srow"><span><b>Sincronizar el móvil y el ordenador</b></span>${tgl('sinc-on', cp.sinc)}</div>
+      <div class="srow"><span>Estado</span>${estadoAjustes()}</div>
+      ${cp.sinc ? dispositivosHtml() : ''}
       <label class="srow"><span>URL del script</span><input class="tx" data-cp="url" value="${esc(cp.url)}" placeholder="https://script.google.com/…"></label><label class="srow"><span>Clave</span><input class="tx" data-cp="clave" value="${esc(cp.clave)}"></label>
-      ${cp.url ? `<div class="two" style="margin:10px 0 4px">${btn('Recuperar', 'cp-rec', '', 'soft sm')}${btn('Guardar ahora', 'cp-guardar', '', 'sm')}</div>` : ''}
-      <div class="s2">Se guarda sola unos minutos después de cada cambio, con tus fotos y PDF, en una hoja y una carpeta de tu Drive. Para pasarla a otro dispositivo, pega la misma URL y clave allí y pulsa «Recuperar». Usa una hoja y una clave distintas de las del grupo.</div></div>
+      ${cp.url ? (cp.sinc ? `<div style="margin:10px 0 4px">${btn(ic('vuelta', 17, 2) + 'Sincronizar ahora', 'sinc-ahora', '', 'soft sm')}</div>` : `<div class="two" style="margin:10px 0 4px">${btn('Recuperar', 'cp-rec', '', 'soft sm')}${btn('Guardar ahora', 'cp-guardar', '', 'sm')}</div>`) : ''}
+      <div class="s2">${cp.sinc ? 'Al abrir la app trae lo último de tu Drive y guarda lo que cambias a los pocos segundos, con fotos y PDF. En el móvil, también tirando de la pantalla hacia abajo. En el otro dispositivo pega la misma URL y clave y activa «Sincronizar».'
+        : 'Pega la URL y la clave del script de tu hoja «Ruta 71 · mi copia» y activa «Sincronizar» para tener el móvil y el ordenador siempre al día. Sin activarlo, se hace una copia sola unos minutos después de cada cambio.'} Usa una hoja y una clave distintas de las del grupo.</div></div>
     ${secT('ojo', 'Apariencia y sonido')}${segHtml([['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']], S.aj.tema, 'tema-ap')}
     <div class="card"><div class="srow"><span>Avisos con sonido en el examen</span>${tgl('sonido', S.aj.sonido)}</div><button class="srow" data-a="probar-sonido"><span class="acc">Probar el sonido</span></button></div>
     ${secT('archivo', 'Tus datos')}<div class="card"><button class="srow" data-a="exportar"><span>Exportar a un archivo</span>${ic('sig', 15)}</button>
@@ -1517,7 +1548,7 @@ function parsearTemario(txt) {
 
 /* ===================================================================== hoja inferior, avisos */
 function hoja(html, cb) { $('#sheet-body').innerHTML = html; $('#sheet-body').scrollTop = 0; $('#scrim').classList.add('on'); $('#sheet').classList.add('on'); if (cb) cb(); }
-function cerrarHoja() { const s = $('#sheet'); if (!s.classList.contains('on')) return; s.classList.remove('on'); $('#scrim').classList.remove('on'); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
+function cerrarHoja() { const s = $('#sheet'); if (!s.classList.contains('on')) return; if (typeof SINC === 'object' && SINC.eleccion) { const f = SINC.eleccion; SINC.eleccion = null; f(null); } s.classList.remove('on'); $('#scrim').classList.remove('on'); if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); }
 const hojaAbierta = () => $('#sheet').classList.contains('on');
 const repintarHoja = html => { const b = $('#sheet-body'), y = b.scrollTop; b.innerHTML = html; b.scrollTop = y; };
 let TT = null;
@@ -1630,7 +1661,7 @@ Object.assign(ACC, {
   'fses-ok': () => { if (FINS.conf) commit(() => programar(FINS.n, FINS.conf)); FINS = null; go('hoy', {}, 'tab'); },
 
   /* temario y ficha */
-  'abrir-tema': x => { const n = +x; cerrarHoja(); if (fichaN() !== n) { FTAB = 'flaq'; FRES = false; FARCH = false; } if (ancho()) { TSEL = n; if (ACT === 'temario') { P = { n }; refresh(); } else go('temario', { n }, 'tab'); } else go('tema', { n }); },
+  'abrir-tema': x => { const n = +x; cerrarHoja(); if (fichaN() !== n) { FTAB = 'flaq'; FRES = false; FARCH = false; } if (ancho()) { const otro = TSEL !== n; TSEL = n; if (ACT === 'temario') { P = { n }; refresh(); const cr = $('.split .colR'); if (otro && cr) cr.scrollTop = 0; } else go('temario', { n }, 'tab'); } else go('tema', { n }); },
   't-modo': x => { S.ui.tmodo = x; save(); refresh(); },
   't-fil': x => { S.ui.tfil = x; save(); refresh(); },
   't-ver': x => { S.ui.tver = x; save(); refresh(); },
@@ -1875,6 +1906,10 @@ Object.assign(ACC, {
   'gu-del': x => { leerGU(); GU.splice(+x, 1); const o = S.p2.guion; S.p2.guion = GU; abrirGuion(); S.p2.guion = o; },
   'gu-ok': () => { leerGU(); cerrarHoja(); commit(() => { S.p2.guion = GU.filter(g => g.t).map(g => ({ t: g.t, m: Math.max(1, +g.m || 1) })); }, 'Guion guardado'); },
   'cp-guardar': () => copiaGuardar(false), 'cp-rec': () => copiaRecuperar(),
+  'sinc-on': () => { if (!S.copia.url || !S.copia.clave) { toast('Primero pega la URL y la clave de tu script'); return; } S.copia.sinc = !S.copia.sinc; save(true); $('#nav').innerHTML = navHtml(); pintarNav(); refresh();
+    if (S.copia.sinc) sincronizar(true); else toast('Sincronización desactivada. Sigue la copia de siempre.'); },
+  'sinc-ahora': () => sincronizar(true),
+  'sinc-elegir': x => { const f = SINC.eleccion; SINC.eleccion = null; cerrarHoja(); if (f) f(x); },
   'exportar': () => { const blob = new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'ruta71-' + hoy() + '.json'; document.body.appendChild(a); a.click(); a.remove(); toast('Archivo creado. Las fotos y los PDF se quedan en el dispositivo.'); },
   'borrar-todo': (x, b) => { if (b.dataset.c !== '1') { b.dataset.c = '1'; b.innerHTML = '<span>Toca otra vez para borrarlo todo</span>'; setTimeout(() => { if (b.isConnected) { b.dataset.c = ''; b.innerHTML = '<span>Borrar todo</span>'; } }, 3500); return; }
     commit(() => { const g = S.grupos, yo = S.yo, gs = S.ui.gsel; S = DEF(); S.grupos = g; S.yo = yo; S.ui.gsel = gs; S.onb = true; }, 'Todo borrado', true); }
@@ -2003,7 +2038,7 @@ addEventListener('hashchange', () => { const m = location.hash.match(/#unirse=([
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') { enviarPend(); return; }
   $('#nav').innerHTML = navHtml(); pintarNav(); if (ACT === 'hoy') refresh();
-  if (S.copia.url && (!S.copia.ult || Date.now() - S.copia.ult > 6 * 36e5)) copiaGuardar(true);
+  if (S.copia.url && !S.copia.sinc && (!S.copia.ult || Date.now() - S.copia.ult > 6 * 36e5)) copiaGuardar(true);
   if (S.grupos.some(g => !g.ult || Date.now() - g.ult > 10 * 6e4)) cargarTodos(true);
 });
 function pintarNav() { const tabAct = (TABS.find(t => t[0] === ACT) || [])[0] || ({ tema: 'temario', convocatoria: 'hoy', ruta: 'hoy', material: 'grupo', corregir: 'grupo', sim: 'simulacro', examenes: 'simulacro', supuestos: 'simulacro', prueba2: 'simulacro' })[ACT];
@@ -2141,3 +2176,176 @@ async function hacerPDF(k, n) {
       <div style="height:6px"></div>${btn(ic('imprimir', 19, 2) + 'Imprimir con el navegador', 'pdf-navegador')}`);
   }
 }
+/* ===================================================================== Sincronizar el móvil y el ordenador (1.1.7)
+   Usa la hoja «Ruta 71 · mi copia» (la misma URL y clave de la copia).
+   Cada dispositivo guarda en local lo último que sincronizó (la «base»). Al sincronizar:
+   1 · sube las fotos y PDF nuevos, 2 · si en el Drive hay una versión que no ha visto, la baja y la junta con lo suyo
+   (comparando con la base: lo que solo ha cambiado en un lado se toma de ese lado; si ha cambiado en los dos, gana
+   lo último que se tocó), 3 · si el resultado tiene algo que el Drive no tiene, lo sube. */
+var SINC_FUERA = ['ui', 'copia', 'pendComp', 'grupo', '_sync', '_sub'];       // esto es de cada dispositivo
+var SINC = { estado: null, prom: null, ultIntento: 0, eleccion: null };
+var DISP = (() => { try { let d = localStorage.getItem('ruta71-disp'); if (!d) { d = uid(); localStorage.setItem('ruta71-disp', d); } return d; } catch (e) { return 'sin-id'; } })();
+function nombreDisp() { const u = navigator.userAgent;
+  return /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Móvil Android' : 'Tablet Android') : 'Ordenador'; }
+function sincOn() { return !!(S.copia && S.copia.url && S.copia.sinc); }
+
+/* lo que se sincroniza: todo menos lo de cada dispositivo, y sin las cachés de los grupos */
+function sincDatos(st) {
+  const o = {}; Object.keys(st).forEach(k => { if (!SINC_FUERA.includes(k)) o[k] = st[k]; });
+  o.grupos = (st.grupos || []).map(g => { const c = Object.assign({}, g); delete c.cache; delete c.ult; return c; });
+  return JSON.parse(JSON.stringify(o));
+}
+const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const esObj = x => x && typeof x === 'object' && !Array.isArray(x);
+function claveItem(x, vistas) { let k = esObj(x) ? (x.id != null ? 'i' + x.id : x.ts != null ? 't' + x.ts + '|' + (x.n != null ? x.n : '') : 'j' + JSON.stringify(x)) : 'p' + JSON.stringify(x);
+  vistas[k] = (vistas[k] || 0) + 1; return vistas[k] > 1 ? k + '#' + vistas[k] : k; }
+function porClave(arr) { const m = new Map(), v = {}; (arr || []).forEach(x => m.set(claveItem(x, v), x)); return m; }
+/* juntar en tres sentidos: b = base, l = este dispositivo, r = el Drive; lGana = si en un choque gana lo de aquí */
+function juntar(b, l, r, lGana) {
+  if (igual(l, r)) return l; if (igual(l, b)) return r; if (igual(r, b)) return l;
+  if (esObj(l) && esObj(r)) { const o = {}, bb = esObj(b) ? b : {};
+    new Set([...Object.keys(l), ...Object.keys(r)]).forEach(k => { const v = (k in l) && (k in r) ? juntar(bb[k], l[k], r[k], lGana)
+        : (k in l) ? ((k in bb) && igual(l[k], bb[k]) ? undefined : l[k]) : ((k in bb) && igual(r[k], bb[k]) ? undefined : r[k]);
+      if (v !== undefined) o[k] = v; });
+    return o; }
+  if (Array.isArray(l) && Array.isArray(r)) { const B = porClave(Array.isArray(b) ? b : []), L = porClave(l), R = porClave(r);
+    const orden = [...(igual([...L.keys()], [...B.keys()]) ? R.keys() : L.keys())]; [...L.keys(), ...R.keys()].forEach(k => { if (!orden.includes(k)) orden.push(k); });
+    const out = []; orden.forEach(k => { const enL = L.has(k), enR = R.has(k), enB = B.has(k); let v;
+      if (enL && enR) v = juntar(B.get(k), L.get(k), R.get(k), lGana);
+      else if (enL) v = enB && igual(L.get(k), B.get(k)) ? undefined : L.get(k);
+      else if (enR) v = enB && igual(R.get(k), B.get(k)) ? undefined : R.get(k);
+      if (v !== undefined) out.push(v); });
+    return out; }
+  return lGana ? l : r;
+}
+/* para juntar bien, los tres lados tienen que tener lo mismo «por defecto»: un tema sin tocar en un lado
+   no debe ganar a ese tema trabajado en el otro */
+function temaDef() { return { e: 0, conf: 0, mio: false, flaq: [], cosas: [], notas: '', enlaces: [], min: 0, ult: null, prox: null, v: 0, vts: null, ix: { modo: 'ori', ori: {}, per: [] }, comp: {} }; }
+function completar(x, claves) {
+  const d = sincDatos(DEF()), o = Object.assign({}, d, x || {});
+  ['conv', 'obj', 'p2', 'aj', 'yo'].forEach(k => { if (esObj(d[k])) o[k] = Object.assign({}, d[k], (x || {})[k] || {}); });
+  o.temas = {}; claves.forEach(k => { o.temas[k] = Object.assign(temaDef(), ((x || {}).temas || {})[k] || {}); });
+  if (x && x._sub) o._sub = x._sub; return o;
+}
+const leerBase = () => { try { return JSON.parse(localStorage.getItem('ruta71-base') || 'null'); } catch (e) { return null; } };
+const ponerBase = d => { try { localStorage.setItem('ruta71-base', JSON.stringify(d)); } catch (e) {} };
+function localVacio() { return !S.tarjetas.length && !S.sims.length && !S.sesiones.length && !S.agenda.length && Object.values(S.temas).every(t => !t.e && !(t.flaq || []).length && !(t.cosas || []).length && !t.notas); }
+/* pasar el resultado a S sin tocar lo de este dispositivo */
+function aplicarSinc(d) {
+  const ui = S.ui, cp = S.copia, pend = S.pendComp, cache = {}; S.grupos.forEach(g => { cache[g.id] = { cache: g.cache, ult: g.ult }; });
+  cargarDatos(d, true); delete S._sub; delete S._sync; S.ui = ui; S.copia = cp; if (pend) S.pendComp = pend;
+  S.grupos.forEach(g => Object.assign(g, cache[g.id] || {}));
+}
+function estadoSinc(e) { SINC.estado = e; const b = $('.sync'); if (b) b.outerHTML = sincBoton(); if (ACT === 'ajustes' && !hojaAbierta() && !escribiendo()) refresh(); }
+function escribiendo() { const a = document.activeElement; return !!(a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)); }
+function sincTexto() { const e = SINC.estado;
+  if (e === 'gira') return ['Sincronizando…', SINC.msg || 'Un momento'];
+  if (e === 'off') return ['Sin conexión', 'Se guardará al volver'];
+  if (e === 'err') return ['No se ha podido sincronizar', 'Revisa la URL y la clave'];
+  return ['Sincronizar', S.copia.ult ? 'Al día · ' + pad(new Date(S.copia.ult).getHours()) + ':' + pad(new Date(S.copia.ult).getMinutes()) : 'Todavía sin sincronizar']; }
+function sincBoton() { if (!sincOn()) return '<span class="sync" hidden></span>'; const [t, s] = sincTexto(), e = SINC.estado;
+  return `<button class="sync ${e === 'off' || e === 'err' ? 'off' : ''}" data-a="sinc-ahora">${e === 'gira' ? '<i class="gira"></i>' : ic(e === 'off' || e === 'err' ? 'alerta' : 'vuelta', 20, 2)}<div><b>${t}</b><small>${s}</small></div></button>`; }
+/* primera vez en un dispositivo que ya tiene cosas y en el Drive también hay: se pregunta */
+function preguntarPrimera(otro) {
+  return new Promise(ok => { SINC.eleccion = ok;
+    hoja(`<h2>Ya tienes datos en tu Drive</h2><div class="sub">Vienen ${otro ? 'de tu ' + esc(otro) : 'de otro dispositivo'}. Este dispositivo también tiene cosas tuyas. ¿Qué hacemos?</div>
+      <div style="height:6px"></div>${btn('Usar los del Drive', 'sinc-elegir', 'drive')}<div style="height:10px"></div>${btn('Juntar los dos', 'sinc-elegir', 'juntar', 'soft')}
+      <p class="note">«Usar los del Drive» deja este dispositivo igual que el otro. «Juntar los dos» suma lo de aquí y lo de allí; si algo está en los dos, se queda lo último que tocaste.</p>`, null);
+  });
+}
+async function subirArchivosSinc(u, k) {
+  for (const id of archivosLocales()) { if (S.copia.subidos[id]) continue; const b = await IDB.get(id).catch(() => null); if (!b) continue;
+    SINC.msg = 'Subiendo fotos y PDF';
+    const j = await api(u, k, 'g-subir', { meta: { tipo: 'copia', titulo: id }, nombre: id + (/pdf/.test(b.type) ? '.pdf' : '.jpg'), mime: b.type || 'image/jpeg', datos: await blobA64(b) }); S.copia.subidos[id] = j.id; }
+}
+async function bajarArchivosSinc() { let n = 0;
+  for (const id of archivosLocales()) { const fid = S.copia.subidos[id]; if (!fid || await IDB.get(id).catch(() => null)) continue;
+    try { const a = await api(S.copia.url, S.copia.clave, 'g-archivo', { id: fid }); await IDB.put(id, b64ABlob(a.datos, a.mime)); n++; } catch (e) {} }
+  if (n && !escribiendo() && !hojaAbierta()) refresh();
+}
+function sincronizar(manual) {
+  if (!sincOn()) { if (manual) toast('Activa «Sincronizar» en Ajustes → Tus dispositivos'); return Promise.resolve(); }
+  if (SINC.prom) return SINC.prom;
+  SINC.prom = sincUnaVez(manual).finally(() => { SINC.prom = null; });
+  return SINC.prom;
+}
+async function sincUnaVez(manual, intento = 0) {
+  if (!navigator.onLine) { estadoSinc('off'); return; }
+  SINC.ultIntento = Date.now(); SINC.msg = ''; estadoSinc('gira');
+  const u = S.copia.url, k = S.copia.clave;
+  try {
+    await subirArchivosSinc(u, k);
+    let info = null; try { info = await api(u, k, 'sync-info'); } catch (e) { if (!/accion/.test(e.message)) throw e; }   // script viejo: sin «sync-info»
+    const base = leerBase(), lo = sincDatos(S); lo._sub = Object.assign({}, S.copia.subidos);
+    let res = lo, remoto = null, vRem = S.copia.v || null, traido = false, otro = '', modRem = 0;
+    if (!info || (info.v || null) !== (S.copia.v || null)) {
+      SINC.msg = 'Trayendo lo último'; const j = await api(u, k, 'recuperar');
+      if (j.datos) {
+        const rs = j.datos._sync || {}; vRem = rs.v || 'antigua'; modRem = rs.mod || 0; otro = ((rs.devs || {})[rs.dev] || {}).n || '';
+        remoto = sincDatos(j.datos); remoto._sub = Object.assign({}, j.datos._sub || (j.datos.copia || {}).subidos || {});
+        if (vRem !== S.copia.v) {
+          let b = base;
+          if (!b || !S.copia.v) {
+            let modo = 'drive'; if (!localVacio()) { modo = await preguntarPrimera(otro); if (!modo) { estadoSinc(null); return; } }
+            b = modo === 'drive' ? lo : {};
+          }
+          const claves = [...new Set([...Object.keys(lo.temas || {}), ...Object.keys(remoto.temas || {}), ...Object.keys((b || {}).temas || {})])];
+          res = juntar(completar(b, claves), completar(lo, claves), completar(remoto, claves), (S.copia.mod || 0) >= (rs.mod || 0));
+          if (remoto.yo && res.yo) res.yo.id = remoto.yo.id;            // eres la misma persona en el grupo
+          res._sub = Object.assign({}, remoto._sub, lo._sub);
+          traido = !igual(res, completar(lo, claves)); remoto = completar(remoto, claves);
+          if (traido) { const sub = res._sub; aplicarSinc(res); S.copia.subidos = sub; }
+          S.copia.devs = rs.devs || S.copia.devs || {};
+        }
+      }
+    }
+    const ref = remoto && vRem !== S.copia.v ? remoto : (base || null);
+    if (!ref || !igual(res, ref) || !remoto && !info) {
+      SINC.msg = 'Guardando';
+      const v = uid(), devs = Object.assign({}, S.copia.devs || {}); devs[DISP] = { n: nombreDisp(), ts: Date.now() };
+      const datos = Object.assign({}, res, { _sync: { v, mod: Math.max(S.copia.mod || 0, modRem), dev: DISP, devs }, _sub: res._sub, copia: { subidos: res._sub } });
+      try { await api(u, k, 'sync-guardar', { datos, v, si: info ? (info.v || null) : (vRem === 'antigua' ? null : vRem) }); }
+      catch (e) { if (/cambiado/.test(e.message) && intento < 3) return sincUnaVez(manual, intento + 1);
+        if (!/accion/.test(e.message)) throw e; await api(u, k, 'guardar', { version: VERSION, datos }); }
+      S.copia.v = v; S.copia.devs = devs;
+    } else S.copia.v = vRem;
+    const sub = res._sub; const b2 = Object.assign({}, res); ponerBase(b2); S.copia.subidos = sub;
+    S.copia.ult = Date.now(); S.copia.error = false; save(true); SINC.msg = '';
+    estadoSinc('ok');
+    if (traido) { if (!escribiendo() && !hojaAbierta()) refresh(); $('#nav').innerHTML = navHtml(); pintarNav(); toast(otro ? `Al día · traído lo del ${otro}` : 'Al día · traído lo nuevo'); }
+    else if (manual) toast('Al día');
+    bajarArchivosSinc();
+  } catch (e) { S.copia.error = true; save(true); estadoSinc(navigator.onLine ? 'err' : 'off'); if (manual) toast(navigator.onLine ? 'No se ha podido sincronizar. Revisa la URL y la clave.' : 'Sin conexión. Se sincronizará al volver.'); }
+}
+/* cuándo: al abrir, al volver a la app, al recuperar la conexión y unos segundos después de cada cambio */
+var SINCT = null;
+function sincPronto(ms = 8000) { if (!sincOn()) return; clearTimeout(SINCT); SINCT = setTimeout(() => { if (escribiendo() || hojaAbierta()) sincPronto(ms); else sincronizar(false); }, ms); }
+addEventListener('online', () => { if (sincOn()) sincronizar(false); });
+addEventListener('offline', () => { if (sincOn()) estadoSinc('off'); });
+document.addEventListener('visibilitychange', () => {
+  if (!sincOn()) return;
+  if (document.visibilityState === 'hidden') { clearTimeout(SINCT); if (Date.now() - (S.copia.mod || 0) < 6e4) sincronizar(false); return; }
+  if (Date.now() - SINC.ultIntento > 15000) sincronizar(false);
+});
+if (S.onb) setTimeout(() => { if (sincOn()) sincronizar(false); }, 1200);
+
+/* tirar hacia abajo para sincronizar (móvil) */
+(function () {
+  let y0 = null, dy = 0, el = null, activo = false;
+  const v = () => $('#view');
+  const quitar = () => { if (el) el.remove(); el = null; const w = v(); w.style.transition = 'transform .3s var(--spring)'; w.style.transform = ''; setTimeout(() => { w.style.transition = ''; }, 320); };
+  const pinta = (txt, giro, gira) => { if (!el) { el = document.createElement('div'); el.className = 'ptr'; document.body.appendChild(el); }
+    el.style.top = `calc(var(--st) + ${Math.max(0, dy - 46)}px)`;
+    el.innerHTML = `<span class="bol">${gira ? '<i class="gira"></i>' : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(${giro}deg);transition:transform .2s"><path d="M12 5v14M6 13l6 6 6-6"/></svg>`}</span><small>${txt}</small>`; };
+  document.addEventListener('touchstart', e => { const w = v(); if (ancho() || !S.onb || document.body.classList.contains('full') || hojaAbierta() || !w || w.scrollTop > 0 || e.touches.length > 1 || !w.contains(e.target)) { y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0; activo = false; }, { passive: true });
+  document.addEventListener('touchmove', e => { if (y0 == null) return; const w = v(); const d = e.touches[0].clientY - y0;
+    if (d <= 0 || w.scrollTop > 0) { if (activo) { dy = 0; quitar(); activo = false; } return; }
+    activo = true; e.preventDefault(); dy = Math.min(120, d * 0.5); w.style.transition = 'none'; w.style.transform = `translateY(${dy}px)`;
+    pinta(dy > 70 ? 'Suelta para sincronizar' : 'Tira para sincronizar', dy > 70 ? 180 : 0); }, { passive: false });
+  document.addEventListener('touchend', () => { if (y0 == null) return; y0 = null; if (!activo) return; activo = false;
+    if (dy > 70) { const w = v(); w.style.transition = 'transform .25s'; w.style.transform = 'translateY(56px)'; dy = 96; pinta(sincOn() ? 'Sincronizando…' : 'Actualizando…', 0, true);
+      const fin = () => { quitar(); };
+      if (sincOn()) sincronizar(true).finally(fin); else { refresh(); setTimeout(() => { fin(); toast('Para tener el móvil y el ordenador al día, activa «Sincronizar» en Ajustes'); }, 500); } }
+    else quitar(); dy = 0; });
+})();

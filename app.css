@@ -457,3 +457,16 @@ html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:10
 .hbar i{width:100%;background:var(--cyan);border-radius:5px 5px 0 0}.hbar>div:last-child i{background:var(--acc)}.hbar small{font:700 11px 'Mono';color:var(--ink2)}
 .capas{display:flex;flex-direction:column;gap:14px}.capas .row{gap:16px;padding:20px 18px}.capas .ic{color:var(--acc)}.capas b{display:block;font-size:16px}.capas small{font-size:13px;color:var(--ink2)}
 .capas .c1{margin-left:20px!important;width:calc(100% - 20px)}.capas .c2{margin-left:40px!important;width:calc(100% - 40px)}
+
+/* 1.1.7 · sincronizar */
+.dispos{padding:4px 0 6px;border-bottom:1px solid var(--line2)}.dispos .row{gap:12px;padding:8px 0}.dispos b{font-size:14.5px;display:block}.dispos small{font-size:12.5px;color:var(--ink2)}
+.dsp{width:34px;height:34px;border-radius:8px;background:var(--acc-soft);color:var(--acc);display:flex;align-items:center;justify-content:center;flex:none}
+.pto-ok{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:7px;vertical-align:1px}
+.ptr{position:fixed;left:50%;transform:translateX(-50%);z-index:25;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.ptr .bol{width:40px;height:40px;border-radius:50%;background:var(--card);border:1px solid var(--line);box-shadow:0 8px 20px -10px rgba(16,37,63,.45);display:flex;align-items:center;justify-content:center;color:var(--acc)}
+.ptr small{font-size:12.5px;font-weight:600;color:var(--ink2)}
+.gira{display:block;width:20px;height:20px;border-radius:50%;border:2.5px solid var(--acc-soft);border-top-color:var(--acc);animation:gira .8s linear infinite;flex:none}
+@keyframes gira{to{transform:rotate(360deg)}}
+.sync{margin-top:10px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;width:100%;text-align:left;background:var(--card)}
+.sync .ic{color:var(--acc)}.sync b{display:block;font-size:14px}.sync small{display:block;font-size:12px;color:var(--ink2)}
+.sync.off{border-color:var(--acc);background:var(--acc-soft)}
