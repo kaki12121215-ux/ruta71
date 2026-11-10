@@ -367,22 +367,28 @@ button,.navbtn,.side,.tabbar,.seg,.chips{-webkit-user-select:none;user-select:no
   @page{margin:16mm 15mm}
   html,body{height:auto;overflow:visible;background:#fff!important;background-image:none!important}
   body>*:not(#print){display:none!important}
-  #print{display:block;color:#10253F;font-family:'Inter',sans-serif;font-size:12.5pt}
-  #print h1{font-family:'Heros';font-size:24pt;margin:2mm 0 1mm}
-  #print h3{font-size:10.5pt;text-transform:uppercase;letter-spacing:.07em;color:#C2461A;margin:7mm 0 2mm}
-  #print .pk{font-size:9pt;color:#5E6D80}#print .pmeta{font-size:10pt;color:#5E6D80}
-  #print .pl{display:flex;gap:3mm;padding:1.6mm 0;border-bottom:.3mm solid #E7EDF2;font-size:11pt;break-inside:avoid}
-  #print .pl.sub{padding-left:8mm}#print .pl.mono{font-family:'Mono'}
-  #print .pn{font-family:'Mono';min-width:9mm;color:#5E6D80}
-  #print .box{width:3.6mm;height:3.6mm;border:.35mm solid #93A3B4;border-radius:.6mm;flex:none;margin-top:.8mm}
-  #print .ptxt{font-size:11pt;line-height:1.5}
-  #print .pcut{display:grid;grid-template-columns:1fr 1fr;border-top:.3mm dashed #93A3B4;border-left:.3mm dashed #93A3B4;margin-top:4mm}
-  #print .pcut>div{border-right:.3mm dashed #93A3B4;border-bottom:.3mm dashed #93A3B4;padding:4mm;min-height:28mm;font-size:11pt;line-height:1.4;break-inside:avoid}
-  #print .pcut small{display:block;font-size:8pt;color:#93A3B4;margin-bottom:1mm}
-  #print .pmapa{display:grid;grid-template-columns:repeat(9,1fr);gap:2mm;margin-top:5mm}#print .pmapa .tl{width:100%;height:auto;aspect-ratio:1;font-size:11pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #print .leg{margin-top:4mm}#print .tl{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  #print .ppie{margin-top:10mm;font-size:8.5pt;color:#93A3B4}
+  #print{display:block}
 }
+.pdoc{color:#10253F;font-family:'Inter',sans-serif;font-size:12.5pt;background:#fff;line-height:1.35;
+  --e0:#DDE4EA;--e1:transparent;--e1b:#5CC8E2;--e2:#A9E4F2;--e3:#1D6FD8;--e4:#10253F;--t0:#8DA0B2;--t1:#10253F;--t2:#10253F;--t3:#FFFFFF;--t4:#FFFFFF;--b4:#10253F;--line:#C9D6E2;--card:#fff;--ink:#10253F;--ink2:#5E6D80}
+.pdoc h1{font-family:'Heros';font-size:24pt;margin:2mm 0 1mm}
+.pdoc h3{font-size:10.5pt;text-transform:uppercase;letter-spacing:.07em;color:#C2461A;margin:7mm 0 2mm}
+.pdoc .pk{font-size:9pt;color:#5E6D80}.pdoc .pmeta{font-size:10pt;color:#5E6D80}
+.pdoc .pl{display:flex;gap:3mm;padding:1.6mm 0;border-bottom:.3mm solid #E7EDF2;font-size:11pt;break-inside:avoid}
+.pdoc .pl.sub{padding-left:8mm}.pdoc .pl.mono{font-family:'Mono'}
+.pdoc .pn{font-family:'Mono';min-width:9mm;color:#5E6D80}
+.pdoc .box{width:3.6mm;height:3.6mm;border:.35mm solid #93A3B4;border-radius:.6mm;flex:none;margin-top:.8mm}
+.pdoc .ptxt{font-size:11pt;line-height:1.5}
+.pdoc .pcut{display:grid;grid-template-columns:1fr 1fr;border-top:.3mm dashed #93A3B4;border-left:.3mm dashed #93A3B4;margin-top:4mm}
+.pdoc .pcut>div{border-right:.3mm dashed #93A3B4;border-bottom:.3mm dashed #93A3B4;padding:4mm;min-height:28mm;font-size:11pt;line-height:1.4;break-inside:avoid}
+.pdoc .pcut small{display:block;font-size:8pt;color:#93A3B4;margin-bottom:1mm}
+.pdoc .pmapa{display:grid;grid-template-columns:repeat(9,1fr);gap:2mm;margin-top:5mm}.pdoc .pmapa .tl{width:100%;height:auto;aspect-ratio:1;font-size:11pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pdoc .leg{margin-top:4mm}.pdoc .tl{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pdoc .ppie{margin-top:10mm;font-size:8.5pt;color:#93A3B4}
+.pdoc .tl.e1{box-shadow:none;border:1.5px solid var(--e1b)}
+.pdoc .leg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:10pt;color:#5E6D80}.pdoc .leg span{display:flex;align-items:center;gap:5px}
+.pdoc p{margin:3mm 0}
+#pdfgen{position:fixed;left:-10000px;top:0;width:180mm;pointer-events:none}
 /* ===================================================================== 1.1.1 */
 .logo{font-size:0;line-height:0}
 .logoimg{display:block;width:100%;max-width:300px;margin-left:-1.4%}
@@ -402,4 +408,3 @@ button,.navbtn,.side,.tabbar,.seg,.chips{-webkit-user-select:none;user-select:no
 
 /* 1.1.2 · estados */
 .leg .tl.e1,.estados .tl.e1{box-shadow:inset 0 0 0 1.5px var(--e1b)}
-#print .tl.e1{box-shadow:none;border:1.5px solid var(--e1b)}
