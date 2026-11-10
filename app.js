@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.4';
+const VERSION = '1.1.5';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);
@@ -324,13 +324,51 @@ const chipsHtml = (xs, sel, a, k = '') => `<div class="chips">${xs.map(x => `<bu
 const segHtml = (xs, sel, a) => `<div class="seg">${xs.map(([k, t]) => `<button class="${k === sel ? 'on' : ''}" data-a="${a}" data-x="${k}">${t}</button>`).join('')}</div>`;
 
 /* ===================================================================== Bienvenida (5 pasos) */
-let ONB = 0, OBJ_TMP = null;
+let ONB = 0, OBJ_TMP = null, TPEGAR = false;
+/* Visita guiada: después de la portada, una pantalla por cada parte de la app; luego, la configuración */
+const hero = (c, h) => `<div class="hero ${c}" aria-hidden="true">${h}</div>`;
+const tag = (t, pos, c = '') => `<span class="tag ${c}" style="${pos}">${t}</span>`;
+const VISITA = [
+  () => ['El temario, de un vistazo', 'Cada casilla es un tema y su color dice cómo lo llevas.',
+    hero('n', `<div class="rel">${tag('Punto naranja: lo llevas al examen', 'top:-14px;right:-4px')}</div><div class="card hmap">${Array.from({ length: 24 }, (_, i) => tile(i + 1, [4, 3, 3, 2, 4, 1, 2, 0, 3, 1, 0, 0, 2, 1, 0, 3, 0, 0, 1, 2, 0, 0, 1, 0][i], 42, [1, 2, 5, 9, 16].includes(i + 1) ? 'mio' : '')).join('')}</div>
+      <div class="escala">${['Sin empezar', 'Leído', 'Resumido', 'Me lo sé', 'Lo domino'].map((t, i) => `<div>${tile('', i, 24)}<small>${t}</small></div>`).join('<i></i>')}</div>`)],
+  () => ['Todo el tema en su ficha', 'Lo que te falla, el índice, lo de memoria y tus notas.',
+    hero('c', `<div class="rel">${tag('Toca el estado para cambiarlo', 'top:-12px;right:-4px', 'n')}</div><div class="card hfi">${tile(19, 2, 46)}<div><small>Proyecto y taller · tema 19</small><b>Normas de salud y seguridad en el taller</b></div></div>
+      <div class="seg">${['Flaquezas', 'Índice', 'Tarjetas', 'Notas'].map((t, i) => `<button class="${i ? '' : 'on'}">${t}</button>`).join('')}</div>
+      <div class="card dfq">${[['Normativa de señalización', 'p', 'Pendiente'], ['Cálculo de la potencia', 'e', 'En ello'], ['Tipos de engranajes', 'r', 'Resuelta']].map(([t, c, e]) => `<div class="row"><b>${t}</b><span class="vest ${c}">${e}</span></div>`).join('')}</div>`)],
+  () => ['Cada día sabes qué toca', 'La agenda reparte tus horas. Si un día no puedes, se reajusta.',
+    hero('o', `<div class="card hag"><div class="hd"><b>Martes 10</b><span>3 bloques · 1 h 45</span></div>
+      <div class="blk"><span class="ck done">${ic('check', 14, 3)}</span><span class="hr">17:00</span>${tile(12, 3, 30)}<span class="grow"><b>Tema 12 · repaso</b><small>Le toca hoy</small></span></div>
+      <div class="blk"><span class="ck"></span><span class="hr">17:45</span>${tile(27, 1, 30)}<span class="grow"><b>Tema 27</b><small>Apartado 3 del índice</small></span></div>
+      <div class="blk"><span class="ck"></span><span class="hr">19:00</span><span class="tl e0" style="--s:30px">${ic('tarjeta', 16)}</span><span class="grow"><b>Tarjetas</b><small>14 te tocan hoy</small></span></div></div>
+      ${tag('Lo que no hiciste pasa a mañana', 'position:relative;align-self:flex-start;margin:-4px 0 -2px', 'n')}<div class="card row vavi">${ic('campana', 20)}<div class="grow"><b>Nuevo aviso en el BON</b><small>Lista provisional de admitidos</small></div></div>`)],
+  () => ['Estudia por bloques', 'Tú eliges el bloque y el descanso. La app te avisa y solo cuenta lo estudiado.',
+    hero('n', `<div class="rel">${tag('Suena al acabar cada bloque', 'top:-14px;right:-4px')}</div><div class="hses"><div class="kick">Bloque 2 de 3</div><b class="m">18:42</b><small>Tema 27 · Mecanismos</small></div>
+      <div class="linea">${['25', '5', '25', '5', '25'].map((m, i) => `<div class="${i % 2 ? 'des' : 'blq'} ${i < 2 ? 'ya' : i === 2 ? 'ahora' : ''}" style="flex:${i % 2 ? 7 : 25}"><small>${m}</small></div>`).join('')}</div>
+      <div class="lineap"><span>Bloques de 25 min</span><span>Descansos de 5</span></div>`)],
+  () => ['Tarjetas que vuelven cuando toca', 'Las que fallas salen antes; las que sabes, cada vez más tarde.',
+    hero('c', `<div class="tipos">${['Girar', 'Escribir', 'Huecos'].map((t, i) => `<span class="${i ? '' : 'on'}">${t}</span>`).join('')}</div>
+      <div class="pila"><div class="card"></div><div class="card"></div><div class="card dtj"><small>Tema 19</small><b>¿Qué tres pasos sigue la conducta PAS?</b><em>Proteger, avisar y socorrer</em></div></div>
+      <div class="rel">${tag('Si te la sabes, vuelve más tarde', 'top:-12px;right:-4px', 'n')}</div><div class="four">${[['No me acordaba', 'mal', 'mañana'], ['Me ha costado', '', '3 días'], ['Bien', '', '1 semana'], ['Fácil', 'facil', '3 semanas']].map(([t, c, d]) => `<button class="${c}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>`)],
+  () => ['Ensaya el examen', 'Sacas bolas, escribes con el tiempo real y te corriges con la rúbrica oficial.',
+    hero('n', `<div class="hbol">${[14, 33, 52, 68].map((n, i) => `<span class="bola ${i === 2 ? 'on' : ''}">${n}</span>`).join('')}</div>
+      <div class="rel">${tag('Fotos de lo que escribes', 'top:-14px;right:-4px')}</div><div class="card hsim"><div><small>Tema 52 · Electrónica digital</small><b class="m">1:58:10</b></div>${ic('foto', 26)}</div>
+      <div class="drub"><i style="flex:25"></i><i style="flex:60"></i><i style="flex:15"></i></div>
+      <div class="rubl"><span><b>25 %</b>Organización</span><span><b>60 %</b>Contenido</span><span><b>15 %</b>Didáctica</span></div>`)],
+  () => ['Prepararlo en grupo', 'Cada uno elige qué comparte. Os repartís temas y os corregís los simulacros.',
+    hero('o', `<div class="card dgr">${[['A', 'Tema 19 · índice', 'Lo ha compartido hoy', 'compartir'], ['M', 'Tema 33', 'Se lo reserva para preparar', 'bandera'], ['J', 'Simulacro del tema 52', 'Pide que alguien lo corrija', 'corregir'], ['L', 'Tema 8 · tarjetas', '24 tarjetas nuevas', 'tarjeta']].map(([l, t, d, i]) => `<div class="row"><span class="ini">${l}</span><div class="grow"><b>${t}</b><small>${d}</small></div>${ic(i, 18)}</div>`).join('')}</div>
+      ${tag('Tú decides qué compartes', 'top:6px;right:-4px', 'n')}<div class="avs">${['A', 'M', 'J', 'L', 'I'].map(l => `<span class="ini">${l}</span>`).join('')}<small>5 en el grupo</small></div>`)],
+  () => ['Mira cuánto has avanzado', 'La probabilidad de que te salga un tema que dominas sube con cada tema.',
+    hero('n', `<div class="hpr"><b>38<span>%</span></b><small>de que salga uno de tus temas entre las 4 bolas</small></div>
+      <div class="hbar">${[30, 55, 40, 70, 62, 85, 48].map((h, i) => `<div><i style="height:${h}%"></i><small>${'LMXJVSD'[i]}</small></div>`).join('')}</div>`)],
+  () => ['Lo tuyo es tuyo', 'Nadie ve nada que no compartas.',
+    hero('c', `<div class="capas">${[['hoy', 'En tu móvil u ordenador', 'Siempre'], ['nube', 'En tu Google Drive', 'Si activas la copia'], ['grupo', 'En el grupo', 'Solo lo que compartes']].map(([i, t, d], k) => `<div class="card row c${k}">${ic(i, 24)}<div class="grow"><b>${t}</b><small>${d}</small></div></div>`).join('')}</div>`)]];
+const NV = VISITA.length;                 // pantallas de la visita
+const ONB_TOT = 1 + NV + 4;               // portada + visita + 4 de configuración
 R.bienvenida = () => {
   if (OBJ_TMP == null) OBJ_TMP = S.obj.temas;
-  const dots = Array.from({ length: 5 }, (_, i) => `<i class="${i === ONB ? 'on' : ''}"></i>`).join('');
-  const pasos = [
-    () => ['Un plano para llegar al examen.', 'Ruta 71 te ayuda a preparar la oposición tema a tema: qué sabes, qué te falla, qué toca repasar hoy y qué probabilidad tienes de que salga uno que dominas.',
-      `<div class="logo"><span class="logoimg"><img class="lg-c" src="${LOGO_C}" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="${LOGO_O}" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div><div class="card">${rutaSvg(8, 3, 3)}<div class="s2">Cada tema es una parada. Avanzas cuando lo dominas.</div></div>`],
+  const dots = Array.from({ length: ONB_TOT }, (_, i) => `<i class="${i === ONB ? 'on' : i < ONB ? 'ya' : ''}"></i>`).join('');
+  const conf = [
     () => ['¿Qué preparas?', 'Con esto ajusto cuántas bolas salen, cuánto dura el tema y la cuenta atrás. Todo se puede cambiar después en Ajustes.',
       `<div class="lab">Convocatoria</div><div class="card"><label class="srow"><span>Convocatoria</span><input class="tx" data-c="nombre" value="${esc(S.conv.nombre)}"></label>
         <label class="srow"><span>Especialidad</span><input class="tx" data-c="esp" value="${esc(S.conv.esp)}"></label>
@@ -349,12 +387,16 @@ R.bienvenida = () => {
     () => ['¿Cómo te llamas?', 'Para saludarte y, si estás en un grupo, para que tus compañeros sepan quién comparte cada cosa. Lo tuyo (flaquezas, notas) es siempre privado.',
       `<input class="inp big" id="onb-nombre" placeholder="Tu nombre" value="${esc(S.yo.nombre)}" autocomplete="given-name">
        <div class="card">${ic('grupo', 26)}<div><b>¿Os vais a organizar en grupo?</b><small>Se configura en la pestaña Grupo: quien lo crea manda a los demás un enlace de invitación.</small></div></div>`]];
-  const [t, lead, extra] = pasos[ONB]();
-  return `<div class="pg narrow"><div class="col">${topBar(null, ONB < 4 ? '<button class="link sk" data-a="onb-saltar">Saltar</button>' : '')}
-    <div class="onb"><h1>${t}</h1><p class="lead">${lead}</p>${extra}</div><div class="sp"></div>
-    <div class="dots">${dots}</div>${btn(ONB < 4 ? 'Siguiente' : 'Empezar', 'onb-sig')}${ONB ? '<button class="link" data-a="onb-atras">Atrás</button>' : '<div style="height:44px"></div>'}</div></div>`;
+  let t, lead, extra, kick = '';
+  if (ONB === 0) [t, lead, extra] = ['Un plano para llegar al examen.', 'Ruta 71 te ayuda a preparar la oposición tema a tema: qué sabes, qué te falla, qué toca repasar hoy y qué probabilidad tienes de que salga uno que dominas.',
+      `<div class="logo"><span class="logoimg"><img class="lg-c" src="${LOGO_C}" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="${LOGO_O}" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div><div class="card">${rutaSvg(8, 3, 3)}<div class="s2">Cada tema es una parada. Avanzas cuando lo dominas.</div></div>`];
+  else if (ONB <= NV) { [t, lead, extra] = VISITA[ONB - 1](); kick = `<div class="kick okk">Cómo funciona · ${ONB} de ${NV}</div>`; }
+  else { [t, lead, extra] = conf[ONB - NV - 1](); kick = `<div class="kick okk">Para empezar · ${ONB - NV} de 4</div>`; }
+  const ult = ONB === ONB_TOT - 1, saltar = ONB === 0 ? 'Saltar' : ONB <= NV ? 'Saltar la visita' : (!ult ? 'Saltar' : '');
+  return `<div class="pg narrow"><div class="col">${topBar(null, saltar ? `<button class="link sk" data-a="onb-saltar">${saltar}</button>` : '')}
+    ${ONB >= 1 && ONB <= NV ? `<div class="onb vis">${kick}<h1>${t}</h1><p class="lead">${lead}</p>${extra}</div>` : `<div class="onb">${kick}<h1>${t}</h1><p class="lead">${lead}</p>${extra}</div><div class="sp"></div>`}
+    <div class="dots">${dots}</div>${btn(ult ? 'Empezar' : 'Siguiente', 'onb-sig')}${ONB ? '<button class="link" data-a="onb-atras">Atrás</button>' : '<div style="height:44px"></div>'}</div></div>`;
 };
-let TPEGAR = false;
 function rutaSvg(n, hecho, actual, labels) {
   const w = 300, xs = Array.from({ length: n }, (_, i) => 12 + i * (w - 24) / (n - 1));
   let b = `<line x1="${xs[0]}" y1="16" x2="${xs[n - 1]}" y2="16" stroke="var(--line)" stroke-width="5" stroke-linecap="round"/>`;
@@ -1513,13 +1555,13 @@ Object.assign(ACC, {
 
   /* bienvenida */
   'onb-sig': () => {
-    if (ONB === 2 && TPEGAR) { const t = parsearTemario(val('t-pegar')); if (t.length < 2) { toast('Pega al menos dos temas, uno por línea'); return; } S.temario = t; S.conv.bolas = bolasPorTemas(t.length); if (OBJ_TMP > t.length) OBJ_TMP = t.length; save(); }
-    if (ONB === 3) { S.obj.temas = OBJ_TMP; save(); }
-    if (ONB === 4) { S.yo.nombre = val('onb-nombre'); S.onb = true; save(); HIST = []; go('hoy', {}, 'tab'); if (JOIN) setTimeout(pedirUnirse, 500); return; }
+    if (ONB === NV + 2 && TPEGAR) { const t = parsearTemario(val('t-pegar')); if (t.length < 2) { toast('Pega al menos dos temas, uno por línea'); return; } S.temario = t; S.conv.bolas = bolasPorTemas(t.length); if (OBJ_TMP > t.length) OBJ_TMP = t.length; save(); }
+    if (ONB === NV + 3) { S.obj.temas = OBJ_TMP; save(); }
+    if (ONB === ONB_TOT - 1) { S.yo.nombre = val('onb-nombre'); S.onb = true; save(); HIST = []; go('hoy', {}, 'tab'); if (JOIN) setTimeout(pedirUnirse, 500); return; }
     ONB++; pintar('push');
   },
   'onb-atras': () => { ONB = Math.max(0, ONB - 1); pintar('back'); },
-  'onb-saltar': () => { ONB = 4; pintar('push'); },
+  'onb-saltar': () => { ONB = ONB >= 1 && ONB <= NV ? NV + 1 : ONB_TOT - 1; pintar('push'); },
   'onb-tec': () => { TPEGAR = false; S.temario = temarioTec(); S.conv.bolas = 4; save(); refresh(); },
   'onb-pegar': () => { TPEGAR = true; refresh(); setTimeout(() => { const t = $('#t-pegar'); if (t) t.focus(); }, 60); },
   'onb-obj': x => { OBJ_TMP = Math.max(1, Math.min(S.temario.length, OBJ_TMP + +x)); $('#onb-obj').textContent = OBJ_TMP; $('#onb-prob').textContent = prob(OBJ_TMP) + ' %'; animTile('#onb-prob'); },
