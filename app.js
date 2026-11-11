@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.7';
+const VERSION = '1.1.8';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);
@@ -145,7 +145,7 @@ const DEF = () => ({
   v: 1, onb: false, yo: { id: uid(), nombre: '' },
   conv: { nombre: 'Navarra 2027 · Secundaria', esp: 'Tecnología', bolas: 4, minTema: 120, fecha: '2027-06-15', aprox: true, fechas: FECHAS_DEF(), enlaces: ENLACES_DEF(), ets: 0 },
   obj: { temas: 30, horas: 15 },
-  temario: temarioTec(), temas: {}, tarjetas: [], sesiones: [], sims: [], supuestos: [], hist: [], agenda: [], copias: {}, grupos: [], examenes: [],
+  temario: temarioTec(), temas: {}, tarjetas: [], sesiones: [], sims: [], supuestos: [], hist: [], agenda: [], copias: {}, grupos: [], examenes: [], fb: [],
   p2: { checks: P2_DEF(), sits: [], ensayos: [], guion: GUION_DEF() },
   rubrica: RUBRICA_DEF(),
   copia: { url: '', clave: '', ult: null, error: false, subidos: {}, sinc: false, v: null, mod: 0, devs: {} },
@@ -217,6 +217,7 @@ function minSemana(off = 0) { const d = new Date(); const dow = (d.getDay() + 6)
 
 /* ===================================================================== iconos de línea */
 const LP = {
+  fb: '<path d="M4 5h16v11H9l-5 4z"/><path d="M9 10h6"/>', bajar: '<path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/>', carpeta: '<path d="M3.5 7V18a1 1 0 0 0 1 1h15a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-8l-2-2.5h-5a1 1 0 0 0-1 1z"/>',
   hoy: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>', temario: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>',
   sim: '<circle cx="9" cy="10" r="4.5"/><circle cx="16" cy="15" r="4.5"/>', grupo: '<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.4"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M14.5 15.2a4.5 4.5 0 0 1 6 3.8"/>',
   prog: '<path d="M5 19V13M10 19V8M15 19v-6M20 19V5"/>', ajustes: '<path d="M4 8h16M4 16h16"/><circle cx="9" cy="8" r="2.4" fill="var(--bg)"/><circle cx="15" cy="16" r="2.4" fill="var(--bg)"/>',
@@ -330,6 +331,7 @@ function navHtml() {
   return `<nav class="tabbar">${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 23)}<span>${t}</span></button>`).join('')}</nav>
     <aside class="side"><div class="marca"><span class="logoimg"><img class="lg-c" src="${LOGO_C}" alt="Ruta 71. Tema a tema, hasta la plaza."><img class="lg-o" src="${LOGO_O}" alt="Ruta 71. Tema a tema, hasta la plaza."></span></div>${TABS.map(([k, t, i]) => `<button class="navbtn" data-a="tab" data-x="${k}">${ic(i, 20)}<span>${t}</span></button>`).join('')}
     <button class="navbtn" data-a="ir" data-x="ajustes">${ic('ajustes', 20)}<span>Ajustes</span></button>
+    <button class="navbtn" data-a="ir" data-x="feedback">${ic('fb', 20)}<span>Feedback</span>${typeof fbPend === 'function' && fbPend().length ? `<em class="fbcuenta">${fbPend().length}</em>` : ''}</button>
     <div class="sidecount"><small>Para el examen</small><b class="m">${diasExamen()}</b><small>días · ${S.conv.aprox ? 'hacia ' : ''}${fechaLarga(S.conv.fecha).replace(/^\S+ /, '')}</small></div>${typeof sincBoton === 'function' ? sincBoton() : ''}</aside>`;
 }
 const topBar = (back, right = '') => `<div class="top"><div class="l">${back ? `<button class="back" data-a="atras">${ic('atras', 19, 2.2)}<span>${back}</span></button>` : ''}</div><div class="r">${right}</div></div>`;
@@ -1477,6 +1479,7 @@ R.ajustes = () => {
       ${cp.url ? (cp.sinc ? `<div style="margin:10px 0 4px">${btn(ic('vuelta', 17, 2) + 'Sincronizar ahora', 'sinc-ahora', '', 'soft sm')}</div>` : `<div class="two" style="margin:10px 0 4px">${btn('Recuperar', 'cp-rec', '', 'soft sm')}${btn('Guardar ahora', 'cp-guardar', '', 'sm')}</div>`) : ''}
       <div class="s2">${cp.sinc ? 'Al abrir la app trae lo último de tu Drive y guarda lo que cambias a los pocos segundos, con fotos y PDF. En el móvil, también tirando de la pantalla hacia abajo. En el otro dispositivo pega la misma URL y clave y activa «Sincronizar».'
         : 'Pega la URL y la clave del script de tu hoja «Ruta 71 · mi copia» y activa «Sincronizar» para tener el móvil y el ordenador siempre al día. Sin activarlo, se hace una copia sola unos minutos después de cada cambio.'} Usa una hoja y una clave distintas de las del grupo.</div></div>
+    ${secT('fb', 'Feedback')}<div class="card"><button class="srow" data-a="ir" data-x="feedback"><span>Notas de mejora</span><span class="m" style="margin-left:auto;margin-right:8px;color:var(--ink2)">${(S.fb || []).filter(x => !x.hecha).length} pendientes</span>${ic('sig', 15)}</button></div>
     ${secT('ojo', 'Apariencia y sonido')}${segHtml([['claro', 'Claro'], ['oscuro', 'Oscuro'], ['auto', 'Automático']], S.aj.tema, 'tema-ap')}
     <div class="card"><div class="srow"><span>Avisos con sonido en el examen</span>${tgl('sonido', S.aj.sonido)}</div><button class="srow" data-a="probar-sonido"><span class="acc">Probar el sonido</span></button></div>
     ${secT('archivo', 'Tus datos')}<div class="card"><button class="srow" data-a="exportar"><span>Exportar a un archivo</span>${ic('sig', 15)}</button>
@@ -2041,7 +2044,7 @@ document.addEventListener('visibilitychange', () => {
   if (S.copia.url && !S.copia.sinc && (!S.copia.ult || Date.now() - S.copia.ult > 6 * 36e5)) copiaGuardar(true);
   if (S.grupos.some(g => !g.ult || Date.now() - g.ult > 10 * 6e4)) cargarTodos(true);
 });
-function pintarNav() { const tabAct = (TABS.find(t => t[0] === ACT) || [])[0] || ({ tema: 'temario', convocatoria: 'hoy', ruta: 'hoy', material: 'grupo', corregir: 'grupo', sim: 'simulacro', examenes: 'simulacro', supuestos: 'simulacro', prueba2: 'simulacro' })[ACT];
+function pintarNav() { const tabAct = (TABS.find(t => t[0] === ACT) || [])[0] || ({ tema: 'temario', convocatoria: 'hoy', ruta: 'hoy', material: 'grupo', corregir: 'grupo', sim: 'simulacro', examenes: 'simulacro', supuestos: 'simulacro', prueba2: 'simulacro', feedback: 'feedback' })[ACT];
   $$('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.x === tabAct || (ACT === 'ajustes' && b.dataset.x === 'ajustes'))); }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 inicio();
@@ -2349,3 +2352,212 @@ if (S.onb) setTimeout(() => { if (sincOn()) sincronizar(false); }, 1200);
       if (sincOn()) sincronizar(true).finally(fin); else { refresh(); setTimeout(() => { fin(); toast('Para tener el móvil y el ordenador al día, activa «Sincronizar» en Ajustes'); }, 500); } }
     else quitar(); dy = 0; });
 })();
+/* ===================================================================== Feedback (1.1.8)
+   Notas de mejora para Iñaki: texto, sección y capturas o vídeos. Las notas van con los datos de la app
+   (y se sincronizan con su copia). Las fotos y vídeos se guardan en el dispositivo (IndexedDB) y, si la copia
+   está conectada, también en la carpeta «Ruta 71 · Feedback» de su Drive. «Exportar» crea un zip en el móvil. */
+var FB_SECC = ['General', 'Hoy', 'Agenda', 'Convocatoria', 'Temario', 'Ficha del tema', 'Tarjetas', 'Estudiar', 'Simulacro', 'Exámenes', 'Grupo', 'Progreso', 'Ajustes', 'Bienvenida'];
+var FB_MAX = 25 * 1024 * 1024;          // el script de Google no admite archivos mucho mayores
+/* Notas que ya entraron en una versión: se marcan solas como hechas (los códigos salen en feedback.txt) */
+var FB_HECHAS = {};
+var FBF = null, FB_EXP = 'p', FB_ZIP = null, JSZIP_P = null;
+if (!Array.isArray(S.fb)) S.fb = [];
+(function marcarHechas() { let n = 0;
+  Object.keys(FB_HECHAS).forEach(v => FB_HECHAS[v].forEach(id => { const x = S.fb.find(y => y.id === id); if (x && !x.hecha) { x.hecha = true; x.hv = v; n++; } }));
+  if (n) save(); })();
+
+function fbPend() { return (S.fb || []).filter(x => !x.hecha); }
+function fbCuando(ts) {
+  const d = new Date(ts), f = ymd(d), h = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if (f === hoy()) return 'Hoy, ' + h; if (f === addDays(hoy(), -1)) return 'Ayer, ' + h;
+  if (f > addDays(hoy(), -7)) return cap(DIAS[d.getDay()]) + ' ' + d.getDate();
+  return fechaCorta(f) + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
+}
+const fbDur = s => Math.floor(s / 60) + ':' + pad(Math.round(s % 60));
+function fbMini(a, nota, edit) {
+  const fondo = a.th ? `style="background-image:url(${a.th})"` : '';
+  return `<button class="fbth ${a.t} ${a.th ? 'con' : ''}" ${fondo} data-a="${edit ? 'fb-quitar' : 'fb-ver'}" data-x="${a.id}" data-k="${nota || ''}" aria-label="${a.t === 'vid' ? 'Vídeo' : 'Captura'}">
+    ${a.th ? '' : '<i></i><i></i><i></i>'}${a.t === 'vid' ? `<b>${ic('play', 14)}</b><em>${fbDur(a.dur || 0)}</em>` : ''}${edit ? '<u>×</u>' : ''}</button>`;
+}
+function fbNotaHtml(x) {
+  return `<div class="card fbn ${x.hecha ? 'hecha' : ''}"><div class="fbh"><span class="m">${fbCuando(x.ts)}</span><span class="fbsec">${esc(x.sec)}</span>
+    <button class="fbck ${x.hecha ? 'on' : ''}" data-a="fb-hecha" data-x="${x.id}" aria-label="${x.hecha ? 'Volver a pendiente' : 'Marcar como hecha'}">${ic('check', 14, 2.6)}</button></div>
+    <button class="fbtx" data-a="fb-editar" data-x="${x.id}">${esc(x.txt).replace(/\n/g, '<br>')}</button>
+    ${x.arch.length ? `<div class="fbths">${x.arch.map(a => fbMini(a, x.id)).join('')}</div>` : ''}
+    ${x.hecha ? `<small class="fbv">${x.hv ? 'Hecha en la versión ' + x.hv : 'Marcada como hecha'}</small>` : ''}</div>`;
+}
+R.feedback = () => {
+  const tab = S.ui.fbtab || 'p', xs = S.fb.filter(x => tab === 't' || (tab === 'h') === !!x.hecha).sort((a, b) => b.ts - a.ts);
+  const hoyIni = parseYmd(hoy()).getTime(), sem = parseYmd(addDays(hoy(), -6)).getTime();
+  const grupos = [['Hoy', xs.filter(x => x.ts >= hoyIni)], ['Esta semana', xs.filter(x => x.ts < hoyIni && x.ts >= sem)], ['Antes', xs.filter(x => x.ts < sem)]];
+  return `<div class="pg narrow"><div class="col">${topBar('Ajustes', `<button class="pill2" data-a="fb-exportar">${ic('bajar', 16, 2)}Exportar</button>`)}
+    <h1>Feedback</h1><div class="sub">${plural(fbPend().length, 'pendiente', 'pendientes')} · ${plural(S.fb.length - fbPend().length, 'hecha', 'hechas')}</div>
+    ${segHtml([['p', 'Pendientes'], ['h', 'Hechas'], ['t', 'Todas']], tab, 'fb-tab')}
+    ${xs.length ? grupos.filter(g => g[1].length).map(([t, ys]) => secT('fb', t) + ys.map(fbNotaHtml).join('')).join('')
+      : `<div class="vacio fbvacio">${ic('fb', 30)}<b>${tab === 'h' ? 'Todavía no hay notas hechas' : 'No hay notas'}</b><small>${tab === 'h' ? 'Cuando una mejora entre en una versión, la nota pasa aquí.' : 'Pulsa + para apuntar una mejora o algo que falla.'}</small></div>`}
+    <div style="height:70px"></div>
+    <button class="fbfab" data-a="fb-nueva" aria-label="Nueva nota">${ic('mas', 26, 2.4)}</button></div></div>`;
+};
+
+/* ---------- nota nueva o editar ---------- */
+function fbHoja() {
+  const x = FBF, edit = !!x.id;
+  return `<h2>${edit ? 'Editar nota' : 'Nueva nota'}</h2><div class="sub">Para ir apuntando mejoras. Solo la ves tú.</div>
+    <textarea class="inp" id="fb-txt" style="min-height:96px;margin-top:4px" placeholder="¿Qué mejorarías o qué falla?">${esc(x.txt)}</textarea>
+    <div class="lab">Sección</div><div class="chips fbchips">${FB_SECC.map(s => `<button class="ch ${s === x.sec ? 'on' : ''}" data-a="fb-sec" data-x="${esc(s)}">${esc(s)}</button>`).join('')}</div>
+    <div class="lab">Capturas y vídeos</div><div class="fbths edit">${x.arch.map(a => fbMini(a, '', true)).join('')}
+      ${x.cargando ? `<span class="fbadd"><i class="gira"></i><span>Preparando…</span></span>` : ''}
+      <label class="fbadd">${ic('foto', 22)}<span>Foto o vídeo</span><input type="file" id="fb-file" accept="image/*,video/*" multiple hidden></label></div>
+    ${x.aviso ? `<div class="fbav">${ic('alerta', 17, 2)}<span>${x.aviso}</span></div>` : ''}
+    <p class="note">Vídeos de hasta 1 minuto (como mucho ${Math.round(FB_MAX / 1048576)} MB).${S.copia.url ? ' Las fotos y vídeos se guardan también en tu Drive, en la carpeta «Ruta 71 · Feedback».' : ' Se guardan en este dispositivo; con la copia conectada irían también a tu Drive.'}</p>
+    <div style="height:8px"></div>${btn(edit ? 'Guardar cambios' : 'Guardar nota', 'fb-guardar', '', x.cargando ? 'off' : '')}
+    ${edit ? `<div style="height:10px"></div>${btn('Borrar la nota', 'fb-borrar', '', 'soft')}` : ''}`;
+}
+const fbPintar = () => { if (hojaAbierta() && FBF) { const t = $('#fb-txt'); if (t) FBF.txt = t.value; repintarHoja(fbHoja()); } };
+function blobAUrl(b) { return new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = ko; r.readAsDataURL(b); }); }
+function fbVideoInfo(file) {
+  return new Promise(ok => {
+    const v = document.createElement('video'), url = URL.createObjectURL(file); let hecho = false;
+    const fin = (dur, th) => { if (hecho) return; hecho = true; URL.revokeObjectURL(url); ok({ dur: dur || 0, th: th || '' }); };
+    v.muted = true; v.playsInline = true; v.preload = 'metadata'; v.src = url;
+    v.onloadedmetadata = () => { const d = isFinite(v.duration) ? v.duration : 0; try { v.currentTime = Math.min(.5, d / 3); } catch (e) { fin(d); } v.onseeked = () => {
+      try { const k = 180 / Math.max(v.videoWidth, v.videoHeight, 1), c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); fin(d, c.toDataURL('image/jpeg', .6)); } catch (e) { fin(d); } }; };
+    v.onerror = () => fin(0); setTimeout(() => fin(isFinite(v.duration) ? v.duration : 0), 6000);
+  });
+}
+async function fbAnadir(files) {
+  if (!FBF) return; FBF.aviso = ''; FBF.cargando = true; fbPintar();
+  const avisos = [];
+  for (const f of files) {
+    try {
+      const id = uid(), esV = /^video\//.test(f.type) || /\.(mov|mp4|m4v)$/i.test(f.name);
+      if (esV) {
+        if (f.size > FB_MAX) { avisos.push(`<b>Este vídeo ocupa ${tamTxt(f.size)}.</b> El máximo es ${Math.round(FB_MAX / 1048576)} MB: recórtalo o grábalo en 720p y vuelve a añadirlo.`); continue; }
+        const inf = await fbVideoInfo(f); await IDB.put('fb.' + id, f);
+        FBF.arch.push({ id, t: 'vid', mime: f.type || 'video/quicktime', ext: (f.name.match(/\.(\w+)$/) || [, 'mov'])[1].toLowerCase(), tam: f.size, dur: inf.dur, th: inf.th });
+      } else if (/^image\//.test(f.type) || /\.(png|jpe?g|heic|webp)$/i.test(f.name)) {
+        const b = await reducirFoto(f, 1800, .82), th = await blobAUrl(await reducirFoto(f, 180, .6)); await IDB.put('fb.' + id, b);
+        FBF.arch.push({ id, t: 'img', mime: 'image/jpeg', ext: 'jpg', tam: b.size, th });
+      } else avisos.push(`<b>${esc(f.name)}</b> no es una foto ni un vídeo.`);
+    } catch (e) { avisos.push(`No se ha podido añadir <b>${esc(f.name || 'el archivo')}</b>. Prueba con otro.`); }
+  }
+  FBF.cargando = false; FBF.aviso = avisos.join('<br>'); fbPintar();
+}
+document.addEventListener('change', e => { if (e.target && e.target.id === 'fb-file') { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) fbAnadir(fs); } });
+
+/* ---------- subir a Drive (si la copia está conectada) ---------- */
+var FB_SUBIENDO = false;
+async function fbSubirPend() {
+  if (!S.copia.url || FB_SUBIENDO || !navigator.onLine) return; FB_SUBIENDO = true;
+  try {
+    for (const x of S.fb) for (const a of x.arch) {
+      if (a.d) continue; const b = await IDB.get('fb.' + a.id).catch(() => null); if (!b) continue;
+      const j = await api(S.copia.url, S.copia.clave, 'fb-subir', { nombre: fbNombreArchivo(x, a), mime: a.mime, datos: await blobA64(b) });
+      a.d = j.id; save();
+    }
+  } catch (e) {} FB_SUBIENDO = false;
+}
+function fbNombreArchivo(x, a) { const i = x.arch.filter(y => y.t === a.t).indexOf(a) + 1; return `${x.sec} · ${a.t === 'vid' ? 'video' : 'captura'}_${i} · ${x.id}.${a.ext}`; }
+async function fbBlob(a) {
+  let b = await IDB.get('fb.' + a.id).catch(() => null); if (b) return b;
+  if (a.d && S.copia.url) { const r = await api(S.copia.url, S.copia.clave, 'g-archivo', { id: a.d }); b = b64ABlob(r.datos, r.mime || a.mime); await IDB.put('fb.' + a.id, b).catch(() => {}); return b; }
+  return null;
+}
+setTimeout(fbSubirPend, 4000);
+addEventListener('online', () => setTimeout(fbSubirPend, 2000));
+
+/* ---------- exportar en zip ---------- */
+function cargarJSZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip); if (JSZIP_P) return JSZIP_P;
+  JSZIP_P = new Promise((ok, ko) => { const s = document.createElement('script'); s.src = 'vendor/jszip.min.js'; s.onload = () => window.JSZip ? ok(window.JSZip) : ko(new Error('jszip')); s.onerror = () => { JSZIP_P = null; ko(new Error('jszip')); }; document.head.appendChild(s); });
+  return JSZIP_P;
+}
+const fbParaExportar = () => S.fb.filter(x => FB_EXP === 't' || !x.hecha).sort((a, b) => a.ts - b.ts);
+function fbExportHoja() {
+  const xs = fbParaExportar(), ar = xs.flatMap(x => x.arch), cap = ar.filter(a => a.t === 'img').length, vid = ar.length - cap, tam = ar.reduce((s, a) => s + (a.tam || 0), 0);
+  const f = hoy(), nom = 'Ruta71_feedback_' + f, conA = xs.map((x, i) => [x, i]).filter(([x]) => x.arch.length);
+  return `<h2>Exportar feedback</h2><div class="sub">El zip se crea en el móvil, sin servicios externos.</div>
+    ${segHtml([['p', 'Solo pendientes'], ['t', 'Todas']], FB_EXP, 'fb-exp')}
+    <div class="fbst">${[[xs.length, plural(xs.length, 'nota', 'notas').replace(/^\d+ /, '')], [cap, cap === 1 ? 'captura' : 'capturas'], [vid, vid === 1 ? 'vídeo' : 'vídeos'], [tamTxt(tam || 0), 'en total']].map(([n, t]) => `<div class="card"><b class="m">${n}</b><small>${t}</small></div>`).join('')}</div>
+    <div class="lab">Qué lleva el zip</div><div class="card fbtree">
+      <div class="r0">${ic('carpeta', 18)}<b>${nom}</b></div>
+      <div class="r1">${ic('doc', 17)}<div><b>feedback.txt</b><small>${plural(xs.length, 'nota numerada', 'notas numeradas')}: fecha, sección, estado, texto y sus archivos</small></div></div>
+      ${conA.slice(0, 3).map(([x, i]) => `<div class="r1">${ic('carpeta', 17)}<div><b>${pad(i + 1)}_${esc(x.sec)}</b><small>${x.arch.map(a => (a.t === 'vid' ? 'video_' : 'captura_') + (x.arch.filter(y => y.t === a.t).indexOf(a) + 1) + '.' + a.ext).join(' · ')}</small></div></div>`).join('')}
+      ${conA.length > 3 ? `<div class="r1"><small>y ${plural(conA.length - 3, 'carpeta más', 'carpetas más')}, una por cada nota con archivos</small></div>` : ''}</div>
+    <p class="note">Pásame el zip en la conversación y te digo cuáles meto en la siguiente versión.</p>
+    <div style="height:8px"></div>${btn(ic('bajar', 19, 2) + 'Descargar zip', 'fb-zip', '', xs.length ? '' : 'off')}`;
+}
+async function fbHacerZip() {
+  const xs = fbParaExportar(); if (!xs.length) return;
+  hoja(`<h2>Preparando el zip…</h2><div class="sub">Un momento${xs.some(x => x.arch.some(a => a.t === 'vid')) ? ': los vídeos tardan un poco' : ''}.</div>`);
+  try {
+    const Z = await cargarJSZip(), z = new Z(), nom = 'Ruta71_feedback_' + hoy(), raiz = z.folder(nom), d = new Date(), faltan = [];
+    const L = [`RUTA 71 · FEEDBACK`, `Exportado el ${d.toLocaleDateString('es-ES')} a las ${pad(d.getHours())}:${pad(d.getMinutes())} · versión ${VERSION}`,
+      `${plural(xs.length, 'nota', 'notas')} (${FB_EXP === 't' ? 'todas' : 'solo pendientes'})`, ''];
+    for (let i = 0; i < xs.length; i++) {
+      const x = xs[i], n = pad(i + 1), dt = new Date(x.ts), carp = `${n}_${x.sec.replace(/[\\/:*?"<>|]/g, '-')}`, nombres = [];
+      for (const a of x.arch) {
+        const fn = (a.t === 'vid' ? 'video_' : 'captura_') + (x.arch.filter(y => y.t === a.t).indexOf(a) + 1) + '.' + a.ext;
+        const b = await fbBlob(a).catch(() => null);
+        if (b) { raiz.folder(carp).file(fn, b); nombres.push(carp + '/' + fn); } else { nombres.push(fn + ' (no está en este dispositivo)'); faltan.push(fn); }
+      }
+      L.push('--------------------------------------------------------------',
+        `${n} · ${dt.toLocaleDateString('es-ES')} ${pad(dt.getHours())}:${pad(dt.getMinutes())} · ${x.sec} · ${x.hecha ? 'Hecha' + (x.hv ? ' en la ' + x.hv : '') : 'Pendiente'} · código ${x.id}`,
+        '', x.txt, '');
+      if (nombres.length) L.push('Archivos: ' + nombres.join(', '), '');
+    }
+    raiz.file('feedback.txt', L.join('\r\n'));
+    const blob = await z.generateAsync({ type: 'blob', compression: 'STORE' });
+    const f = new File([blob], nom + '.zip', { type: 'application/zip' });
+    if (FB_ZIP && FB_ZIP.url) URL.revokeObjectURL(FB_ZIP.url); FB_ZIP = { f, url: URL.createObjectURL(f) };
+    const comp = navigator.canShare && navigator.canShare({ files: [f] });
+    hoja(`<h2>Zip listo</h2><div class="sub">${esc(f.name)} · ${tamTxt(f.size)}${faltan.length ? `<br>${plural(faltan.length, 'archivo no está', 'archivos no están')} en este dispositivo ni en tu Drive: va el nombre en feedback.txt.` : ''}</div>
+      <div style="height:6px"></div>${comp ? btn(ic('subir', 19, 2) + 'Compartir o guardar', 'fb-zip-comp') + '<div style="height:10px"></div>' : ''}${btn(ic('bajar', 19, 2) + 'Descargar el zip', 'fb-zip-abrir', '', comp ? 'soft' : '')}
+      <p class="note">En el iPhone: «Compartir o guardar» → «Guardar en Archivos». Después me lo subes a la conversación.</p>`);
+  } catch (e) { hoja(`<h2>No se ha podido crear el zip</h2><div class="sub">Comprueba que la carpeta vendor está subida a GitHub con el archivo jszip.min.js.</div>`); }
+}
+
+/* ---------- ver una captura o un vídeo ---------- */
+async function fbVer(aid) {
+  let a = null, x = null; for (const y of S.fb) { const z = y.arch.find(q => q.id === aid); if (z) { a = z; x = y; break; } }
+  if (!a && FBF) a = FBF.arch.find(q => q.id === aid); if (!a) return;
+  hoja(`<h2>${a.t === 'vid' ? 'Vídeo' : 'Captura'}</h2><div class="sub">${x ? esc(x.sec) + ' · ' + fbCuando(x.ts) : ''}</div><div class="fbver"><i class="gira"></i></div>`);
+  try { const b = await fbBlob(a); const c = $('.fbver'); if (!c) return;
+    if (!b) { c.innerHTML = '<small>No está en este dispositivo ni en tu Drive.</small>'; return; }
+    const u = URL.createObjectURL(b); c.innerHTML = a.t === 'vid' ? `<video src="${u}" controls playsinline></video>` : `<img src="${u}" alt="">`; }
+  catch (e) { const c = $('.fbver'); if (c) c.innerHTML = '<small>No se ha podido abrir.</small>'; }
+}
+
+/* ---------- acciones ---------- */
+Object.assign(ACC, {
+  'fb-tab': x => { S.ui.fbtab = x; save(true); refresh(); },
+  'fb-nueva': () => { FBF = { id: null, txt: '', sec: ACT === 'feedback' ? 'General' : 'General', arch: [], aviso: '' }; hoja(fbHoja(), () => setTimeout(() => { const t = $('#fb-txt'); if (t) t.focus(); }, 350)); },
+  'fb-editar': x => { const n = S.fb.find(y => y.id === x); if (!n) return; FBF = { id: n.id, txt: n.txt, sec: n.sec, arch: n.arch.map(a => Object.assign({}, a)), aviso: '' }; hoja(fbHoja()); },
+  'fb-sec': x => { if (!FBF) return; FBF.sec = x; fbPintar(); },
+  'fb-quitar': x => { if (!FBF) return; FBF.arch = FBF.arch.filter(a => a.id !== x);
+    if (!S.fb.some(n => n.arch.some(a => a.id === x))) IDB.del('fb.' + x).catch(() => {});   // aún sin guardar: fuera del dispositivo
+    fbPintar(); },
+  'fb-guardar': () => {
+    if (!FBF || FBF.cargando) return; const t = val('fb-txt');
+    if (!t) { FBF.txt = ''; FBF.aviso = 'Escribe la nota antes de guardarla.'; repintarHoja(fbHoja()); const ta = $('#fb-txt'); if (ta) ta.focus(); return; }
+    const f = FBF;
+    commit(() => {
+      if (f.id) { const n = S.fb.find(y => y.id === f.id); if (n) { const fuera = n.arch.filter(a => !f.arch.some(b => b.id === a.id)); fbQuitarArchivos(fuera); n.txt = t; n.sec = f.sec; n.arch = f.arch; } }
+      else S.fb.push({ id: uid(), ts: Date.now(), sec: f.sec, txt: t, arch: f.arch, hecha: false, hv: null });
+    }, f.id ? 'Nota guardada' : 'Nota apuntada', false);
+    FBF = null; cerrarHoja(); fbSubirPend();
+  },
+  'fb-borrar': () => { if (!FBF || !FBF.id) return; const id = FBF.id; FBF = null; cerrarHoja();
+    commit(() => { const n = S.fb.find(y => y.id === id); if (n) fbQuitarArchivos(n.arch); S.fb = S.fb.filter(y => y.id !== id); }, 'Nota borrada', false); },
+  'fb-hecha': x => { const n = S.fb.find(y => y.id === x); if (!n) return; commit(() => { n.hecha = !n.hecha; if (!n.hecha) n.hv = null; }, n.hecha ? 'Vuelve a pendientes' : 'Marcada como hecha'); },
+  'fb-ver': x => fbVer(x),
+  'fb-exportar': () => { FB_EXP = 'p'; hoja(fbExportHoja()); },
+  'fb-exp': x => { FB_EXP = x; repintarHoja(fbExportHoja()); },
+  'fb-zip': () => fbHacerZip(),
+  'fb-zip-comp': () => { if (FB_ZIP) navigator.share({ files: [FB_ZIP.f], title: FB_ZIP.f.name }).catch(() => {}); },
+  'fb-zip-abrir': () => { if (!FB_ZIP) return; const a = document.createElement('a'); a.href = FB_ZIP.url; a.download = FB_ZIP.f.name; document.body.appendChild(a); a.click(); a.remove(); }
+});
+function fbQuitarArchivos(xs) {
+  xs.forEach(a => { IDB.del('fb.' + a.id).catch(() => {}); if (a.d && S.copia.url) api(S.copia.url, S.copia.clave, 'fb-borrar', { id: a.d }).catch(() => {}); });
+}
