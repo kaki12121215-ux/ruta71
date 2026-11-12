@@ -83,7 +83,7 @@ function indiceOrientativo(n) {
  * en tu Google. El grupo comparte materiales en una hoja de Google con un script.
  */
 'use strict';
-const VERSION = '1.1.8';
+const VERSION = '1.1.9';
 
 /* ===================================================================== utilidades */
 const $ = s => document.querySelector(s);
@@ -1998,7 +1998,7 @@ document.addEventListener('change', async e => {
   const t = e.target;
   if (t.dataset.c) { S.conv[t.dataset.c] = t.value.trim() || S.conv[t.dataset.c]; save(); if (t.dataset.c === 'fecha') { pushConv(); refresh(); } }
   if (t.dataset.y) { S.yo[t.dataset.y] = t.value.trim(); save(); }
-  if (t.dataset.cp) { S.copia[t.dataset.cp] = t.value.trim(); S.copia.error = false; save(); refresh(); }
+  if (t.dataset.cp) { S.copia[t.dataset.cp] = t.value.trim(); S.copia.error = false; save(); setTimeout(() => { if (!escribiendo()) refresh(); }, 0); }   // si ya estás en el otro campo, no se repinta (antes se perdía lo que escribías)
   if (t.id === 't-blq-sel') { S.ui.tblq = t.value; save(); refresh(); }
   if (t.id === 'g-sel') { S.ui.gsel = t.value; S.ui.gfT = S.ui.gfK = S.ui.gfP = ''; save(); refresh(); const g = grupoAct(); if (g && (!g.ult || Date.now() - g.ult > 60000)) cargarGrupo(true, g); }
   if (['gf-t', 'gf-k', 'gf-p'].includes(t.id)) { S.ui[{ 'gf-t': 'gfT', 'gf-k': 'gfK', 'gf-p': 'gfP' }[t.id]] = t.value; save(); refresh(); }
@@ -2047,7 +2047,7 @@ document.addEventListener('visibilitychange', () => {
 function pintarNav() { const tabAct = (TABS.find(t => t[0] === ACT) || [])[0] || ({ tema: 'temario', convocatoria: 'hoy', ruta: 'hoy', material: 'grupo', corregir: 'grupo', sim: 'simulacro', examenes: 'simulacro', supuestos: 'simulacro', prueba2: 'simulacro', feedback: 'feedback' })[ACT];
   $$('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.x === tabAct || (ACT === 'ajustes' && b.dataset.x === 'ajustes'))); }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-inicio();
+/* inicio() se llama al final de app.js (src/99_inicio.js), cuando ya está cargado todo */
 /* ===================================================================== PDF de verdad (1.1.3)
    En el iPhone, con la app abierta desde el icono, «window.print()» no hace nada.
    Por eso la app monta la hoja con el mismo diseño de impresión, la mide y la dibuja en un PDF
@@ -2561,3 +2561,6 @@ Object.assign(ACC, {
 function fbQuitarArchivos(xs) {
   xs.forEach(a => { IDB.del('fb.' + a.id).catch(() => {}); if (a.d && S.copia.url) api(S.copia.url, S.copia.clave, 'fb-borrar', { id: a.d }).catch(() => {}); });
 }
+/* Arranque (1.1.9): va lo último, para que la sincronización y el feedback ya estén cargados.
+   Antes estaba al final de 6_acciones.js y, con «Sincronizar» activado, la app se quedaba en blanco al abrirla. */
+inicio();
